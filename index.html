@@ -105,7 +105,7 @@
       </select>
     </div>
     <p id="lock-desc">合言葉（パスコード）を入力してください</p>
-    <input type="password" id="passcode-input" placeholder="合言葉を入力">
+    <input type="password" id="passcode-input" placeholder="合言葉を入力" onkeydown="if(event.key==='Enter')checkPasscode()">
     <button type="button" id="lock-btn" onclick="checkPasscode()">ロック解除</button>
     <div id="lock-error">合言葉が違います</div>
   </div>
@@ -231,7 +231,7 @@ const I18N = {
   it: {
     lockTitle: "🔒 Blocco Accesso", lockDesc: "Inserisci la password", lockPlaceholder: "Password", lockBtn: "Sblocca", lockError: "Password errata",
     homeTitle: "Fencing Poule Home", compLabel: "Torneo / Girone", sizeLabel: "Numero Atleti", startBtn: "Nuovo Girone", historyTitle: "Cronologia",
-    title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Nome Torneo", next: "Successivo", reg: "Salva e Avanti", hint: "*Tocca il nome per modificare", fencer: "Atleta", load: "Apri", del: "Elimina", complete: "Tutti i0 match finiti", orderTitle: "Ordine Assalti"
+    title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Nome Torneo", next: "Successivo", reg: "Salva e Avanti", hint: "*Tocca il nome per modificare", fencer: "Atleta", load: "Apri", del: "Elimina", complete: "Tutti i match finiti", orderTitle: "Ordine Assalti"
   },
   zh: {
     lockTitle: "🔒 访问限制", lockDesc: "请输入访问口令", lockPlaceholder: "输入口令", lockBtn: "解锁", lockError: "口令错误",
@@ -263,7 +263,485 @@ let tempWinner = null;
 window.onload = function() {
   let isUnlocked = false;
   try {
-    isUnlocked = (localStorage.getItem('fp_unlocked') === 'true');
+    isUnlocked = (localStorage.getItem('fp_unlocked'] === 'true');
     const savedLang = localStorage.getItem('fp_lang');
     if (savedLang && I18N[savedLang]) {
-      state
+      state.lang = savedLang;
+    }
+  } catch(e) {}
+
+  applyLang();
+
+  if (isUnlocked) {
+    document.getElementById('lock-screen').style.display = 'none';
+    initApp();
+  }
+};
+
+function changeLang(lang) {
+  state.lang = lang;
+  try { localStorage.setItem('fp_lang', lang); } catch(e) {}
+  applyLang();
+  saveState();
+  if (document.getElementById('setup-screen') && document.getElementById('setup-screen').style.display === 'flex') {
+    renderSetupHistory();
+  }
+  renderAll();
+}
+
+function applyLang() {
+  const t = I18N[state.lang] || I18N.ja;
+  
+  if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang;
+  if(document.getElementById('lock-lang-select')) document.getElementById('lock-lang-select').value = state.lang;
+
+  if(document.getElementById('lock-title')) document.getElementById('lock-title').textContent = t.lockTitle;
+  if(document.getElementById('lock-desc')) document.getElementById('lock-desc').textContent = t.lockDesc;
+  if(document.getElementById('passcode-input')) document.getElementById('passcode-input').placeholder = t.lockPlaceholder;
+  if(document.getElementById('lock-btn')) document.getElementById('lock-btn').textContent = t.lockBtn;
+  if(document.getElementById('lock-error')) document.getElementById('lock-error').textContent = t.lockError;
+
+  if(document.getElementById('home-title')) document.getElementById('home-title').textContent = t.homeTitle;
+  if(document.getElementById('setup-comp-label')) document.getElementById('setup-comp-label').textContent = t.compLabel;
+  if(document.getElementById('setup-size-label')) document.getElementById('setup-size-label').textContent = t.sizeLabel;
+  if(document.getElementById('setup-start-btn')) document.getElementById('setup-start-btn').textContent = t.startBtn;
+  if(document.getElementById('setup-history-title')) document.getElementById('setup-history-title').textContent = t.historyTitle;
+
+  if(document.getElementById('ui-title')) document.getElementById('ui-title').textContent = t.title;
+  if(document.getElementById('ui-home-btn')) document.getElementById('ui-home-btn').textContent = t.homeBtn;
+  if(document.getElementById('comp-name')) document.getElementById('comp-name').placeholder = t.compPlaceholder;
+  if(document.getElementById('ui-register-btn')) document.getElementById('ui-register-btn').textContent = t.reg;
+  if(document.getElementById('ui-name-hint')) document.getElementById('ui-name-hint').textContent = t.hint;
+  if(document.getElementById('ui-order-title')) document.getElementById('ui-order-title').textContent = t.orderTitle;
+}
+
+function checkPasscode() {
+  const input = document.getElementById('passcode-input').value;
+  if (input === PASSCODE) {
+    try { localStorage.setItem('fp_unlocked', 'true'); } catch(e) {}
+    document.getElementById('lock-screen').style.display = 'none';
+    initApp();
+  } else {
+    const errEl = document.getElementById('lock-error');
+    if(errEl) errEl.style.display = 'block';
+  }
+}
+
+function initApp() {
+  try {
+    const savedCurrent = localStorage.getItem('fp_current_state');
+    if (savedCurrent) {
+      const parsed = JSON.parse(savedCurrent);
+      if (parsed) {
+        state = parsed;
+        if (state.lang) {
+          applyLang();
+        }
+      }
+    }
+  } catch(e) {}
+  showSetupScreen();
+  loadMatchToInput(state.currentMatchIdx);
+  renderAll();
+}
+
+function showSetupScreen() {
+  const nameEl = document.getElementById('setup-comp-name');
+  const sizeEl = document.getElementById('setup-poule-size');
+  if(nameEl) nameEl.value = state.compName || '';
+  if(sizeEl) sizeEl.value = state.size || 6;
+  renderSetupHistory();
+  const screen = document.getElementById('setup-screen');
+  if(screen) screen.style.display = 'flex';
+}
+
+function startNewPouleFromSetup() {
+  const nameInput = document.getElementById('setup-comp-name').value.trim();
+  const sizeInput = parseInt(document.getElementById('setup-poule-size').value, 10);
+  
+  initNewPoule(sizeInput);
+  state.compName = nameInput;
+  const compNameEl = document.getElementById('comp-name');
+  if(compNameEl) compNameEl.value = nameInput;
+  saveState();
+  
+  const screen = document.getElementById('setup-screen');
+  if(screen) screen.style.display = 'none';
+  renderAll();
+}
+
+function renderSetupHistory() {
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
+  const container = document.getElementById('setup-history-list');
+  if(!container) return;
+  const t = I18N[state.lang] || I18N.ja;
+  
+  if (history.length === 0) {
+    container.innerHTML = '<div style="font-size:12px; color:#718096; text-align:center; padding: 10px;">- No history -</div>';
+    return;
+  }
+
+  let html = '';
+  history.forEach(item => {
+    const title = item.compName && item.compName.trim() !== '' ? item.compName : item.createdAt;
+    html += `
+      <div class="history-row">
+        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
+          <div style="font-weight:bold; font-size:13px;">${title} (${item.size})</div>
+          <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
+        </div>
+        <div style="display:flex; gap:4px;">
+          <button type="button" style="padding:4px 8px; font-size:12px;" onclick="loadHistoryItem('${item.id}')">${t.load}</button>
+          <button type="button" class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteHistoryItem('${item.id}')">${t.del}</button>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function loadHistoryItem(id) {
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
+  const found = history.find(item => item.id === id);
+  if (found) {
+    state = found;
+    if(state.lang) {
+      applyLang();
+    }
+    if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
+    saveState();
+    loadMatchToInput(state.currentMatchIdx);
+    renderAll();
+    const screen = document.getElementById('setup-screen');
+    if(screen) screen.style.display = 'none';
+  }
+}
+
+function deleteHistoryItem(id) {
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
+  history = history.filter(item => item.id !== id);
+  try {
+    localStorage.setItem('fp_history', JSON.stringify(history));
+  } catch(e) {}
+  renderSetupHistory();
+}
+
+function updateCompName(val) {
+  state.compName = val;
+  saveState();
+}
+
+function formatNow() {
+  const d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function initNewPoule(size) {
+  size = parseInt(size);
+  const t = I18N[state.lang] || I18N.ja;
+  state = {
+    id: 'poule_' + Date.now(),
+    lang: state.lang,
+    compName: document.getElementById('setup-comp-name') ? document.getElementById('setup-comp-name').value : '',
+    createdAt: formatNow(),
+    size: size,
+    fencers: Array.from({length: size}, (_, i) => `${t.fencer} ${i+1}`),
+    results: {},
+    currentMatchIdx: 0
+  };
+  saveState();
+  loadMatchToInput(0);
+  renderAll();
+}
+
+function getMatchKey(a, b) {
+  return a < b ? `${a}-${b}` : `${b}-${a}`;
+}
+
+function loadMatchToInput(idx) {
+  const order = BOUT_ORDERS[state.size];
+  if (!order || idx >= order.length) idx = 0;
+  state.currentMatchIdx = idx;
+  const [f1, f2] = order[idx];
+  const key = getMatchKey(f1, f2);
+  const existing = state.results[key];
+
+  if (existing) {
+    tempScoreL = (f1 < f2) ? existing.s1 : existing.s2;
+    tempScoreR = (f1 < f2) ? existing.s2 : existing.s1;
+    tempWinner = (existing.winner === f1) ? 'L' : 'R';
+  } else {
+    tempScoreL = 0;
+    tempScoreR = 0;
+    tempWinner = null;
+  }
+  updateInputUI();
+}
+
+function adjScore(side, delta) {
+  if (side === 'L') {
+    tempScoreL = Math.max(0, Math.min(5, tempScoreL + delta));
+  } else {
+    tempScoreR = Math.max(0, Math.min(5, tempScoreR + delta));
+  }
+  if (tempScoreL === 5 && tempScoreR < 5) tempWinner = 'L';
+  else if (tempScoreR === 5 && tempScoreL < 5) tempWinner = 'R';
+  else if (tempScoreL > tempScoreR) tempWinner = 'L';
+  else if (tempScoreR > tempScoreL) tempWinner = 'R';
+  else tempWinner = null;
+
+  updateInputUI();
+}
+
+function setWinner(side) {
+  tempWinner = side;
+  updateInputUI();
+}
+
+function updateInputUI() {
+  const order = BOUT_ORDERS[state.size];
+  if (!order) return;
+  const [f1, f2] = order[state.currentMatchIdx];
+  const t = I18N[state.lang] || I18N.ja;
+
+  if(document.getElementById('match-progress')) document.getElementById('match-progress').textContent = `Match ${state.currentMatchIdx + 1} / ${order.length}`;
+  
+  let nextIdx = -1;
+  for (let i = 1; i <= order.length; i++) {
+    const checkIdx = (state.currentMatchIdx + i) % order.length;
+    const [nf1, nf2] = order[checkIdx];
+    if (!state.results[getMatchKey(nf1, nf2)]) {
+      nextIdx = checkIdx;
+      break;
+    }
+  }
+  if (nextIdx !== -1) {
+    const [nf1, nf2] = order[nextIdx];
+    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${state.fencers[nf1-1]} vs ${state.fencers[nf2-1]}`;
+  } else {
+    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${t.complete}`;
+  }
+
+  if(document.getElementById('left-num')) document.getElementById('left-num').textContent = `#${f1}`;
+  if(document.getElementById('left-name')) document.getElementById('left-name').textContent = state.fencers[f1 - 1];
+  if(document.getElementById('left-score')) document.getElementById('left-score').textContent = tempScoreL;
+
+  if(document.getElementById('right-num')) document.getElementById('right-num').textContent = `#${f2}`;
+  if(document.getElementById('right-name')) document.getElementById('right-name').textContent = state.fencers[f2 - 1];
+  if(document.getElementById('right-score')) document.getElementById('right-score').textContent = tempScoreR;
+
+  const lBtn = document.getElementById('left-win-btn');
+  const rBtn = document.getElementById('right-win-btn');
+  if(lBtn) lBtn.className = 'btn-win' + (tempWinner === 'L' ? ' active' : '');
+  if(rBtn) rBtn.className = 'btn-win' + (tempWinner === 'R' ? ' active' : '');
+}
+
+function registerMatch() {
+  const order = BOUT_ORDERS[state.size];
+  const [f1, f2] = order[state.currentMatchIdx];
+
+  if (!tempWinner) {
+    if (tempScoreL > tempScoreR) tempWinner = 'L';
+    else if (tempScoreR > tempScoreL) tempWinner = 'R';
+    else {
+      alert("勝者（WIN）を選択してください");
+      return;
+    }
+  }
+
+  const key = getMatchKey(f1, f2);
+  const winnerNum = (tempWinner === 'L') ? f1 : f2;
+  state.results[key] = {
+    s1: (f1 < f2) ? tempScoreL : tempScoreR,
+    s2: (f1 < f2) ? tempScoreR : tempScoreL,
+    winner: winnerNum
+  };
+
+  let nextIdx = (state.currentMatchIdx + 1) % order.length;
+  for (let i = 1; i <= order.length; i++) {
+    const checkIdx = (state.currentMatchIdx + i) % order.length;
+    const [nf1, nf2] = order[checkIdx];
+    if (!state.results[getMatchKey(nf1, nf2)]) {
+      nextIdx = checkIdx;
+      break;
+    }
+  }
+
+  saveState();
+  loadMatchToInput(nextIdx);
+  renderAll();
+}
+
+function selectMatchByFencers(r, c) {
+  if (r === c) return;
+  const order = BOUT_ORDERS[state.size];
+  const idx = order.findIndex(([a, b]) => (a === r && b === c) || (a === c && b === r));
+  if (idx !== -1) {
+    loadMatchToInput(idx);
+    renderAll();
+  }
+}
+
+function editFencerName(idx) {
+  const current = state.fencers[idx];
+  const newName = prompt(`#${idx+1} 選手名を入力:`, current);
+  if (newName !== null && newName.trim() !== "") {
+    state.fencers[idx] = newName.trim();
+    saveState();
+    renderAll();
+  }
+}
+
+function renderAll() {
+  const timeDisplay = document.getElementById('start-time-display');
+  if(timeDisplay) timeDisplay.textContent = `Start: ${state.createdAt}`;
+  updateInputUI();
+  renderTable();
+  renderBoutOrderList();
+}
+
+function renderTable() {
+  const table = document.getElementById('poule-table');
+  if(!table) return;
+  const n = state.size;
+  const order = BOUT_ORDERS[n];
+  if (!order) return;
+  const [curF1, curF2] = order[state.currentMatchIdx];
+
+  let stats = Array.from({length: n}, (_, i) => ({ id: i+1, v: 0, m: 0, ts: 0, tr: 0 }));
+  for (let r = 1; r <= n; r++) {
+    for (let c = 1; c <= n; c++) {
+      if (r === c) continue;
+      const res = state.results[getMatchKey(r, c)];
+      if (res) {
+        stats[r-1].m++;
+        const myScore = (r < c) ? res.s1 : res.s2;
+        const oppScore = (r < c) ? res.s2 : res.s1;
+        stats[r-1].ts += myScore;
+        stats[r-1].tr += oppScore;
+        if (res.winner === r) stats[r-1].v++;
+      }
+    }
+  }
+
+  let ranked = [...stats].map(st => ({
+    ...st,
+    vm: st.m > 0 ? st.v / st.m : 0,
+    ind: st.ts - st.tr
+  })).sort((a, b) => {
+    if (b.vm !== a.vm) return b.vm - a.vm;
+    if (b.ind !== a.ind) return b.ind - a.ind;
+    return b.ts - a.ts;
+  });
+
+  let ranks = {};
+  ranked.forEach((item, index) => {
+    ranks[item.id] = index + 1;
+  });
+
+  let html = `<thead><tr><th>Pl</th><th>Name</th><th>#</th>`;
+  for (let i = 1; i <= n; i++) html += `<th>${i}</th>`;
+  html += `<th>V</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th></tr></thead><tbody>`;
+
+  for (let r = 1; r <= n; r++) {
+    const st = stats[r-1];
+    const vm = st.m > 0 ? (st.v / st.m).toFixed(2) : '.00';
+    const ind = st.ts - st.tr;
+    const pl = ranks[r];
+
+    html += `<tr>`;
+    html += `<td style="font-weight:bold; background:#edf2f7;">${pl}</td>`;
+    html += `<td class="name-cell" onclick="editFencerName(${r-1})">${state.fencers[r-1]}</td>`;
+    html += `<th>${r}</th>`;
+
+    for (let c = 1; c <= n; c++) {
+      if (r === c) {
+        html += `<td class="diag"></td>`;
+      } else {
+        const isCurrent = (r === curF1 && c === curF2) || (r === curF2 && c === curF1);
+        const res = state.results[getMatchKey(r, c)];
+        let cellContent = '';
+        if (res) {
+          const myScore = (r < c) ? res.s1 : res.s2;
+          if (res.winner === r) {
+            cellContent = `<span class="res-v">V${myScore}</span>`;
+          } else {
+            cellContent = `<span class="res-d">${myScore}</span>`;
+          }
+        }
+        html += `<td class="clickable ${isCurrent ? 'current-cell' : ''}" onclick="selectMatchByFencers(${r},${c})">${cellContent}</td>`;
+      }
+    }
+
+    html += `<td class="stat-cell">${st.v}</td>`;
+    html += `<td class="stat-cell">${vm}</td>`;
+    html += `<td class="stat-cell">${st.ts}</td>`;
+    html += `<td class="stat-cell">${st.tr}</td>`;
+    html += `<td class="stat-cell">${ind > 0 ? '+'+ind : ind}</td>`;
+    html += `</tr>`;
+  }
+  html += `</tbody>`;
+  table.innerHTML = html;
+}
+
+function renderBoutOrderList() {
+  const container = document.getElementById('bout-order-container');
+  if(!container) return;
+  const order = BOUT_ORDERS[state.size];
+  if (!order) return;
+
+  let html = '';
+  order.forEach(([f1, f2], idx) => {
+    const key = getMatchKey(f1, f2);
+    const res = state.results[key];
+    const isCurrent = (idx === state.currentMatchIdx);
+    
+    let statusText = '<span style="color:#718096;">-</span>';
+    if (res) {
+      const s1 = (f1 < f2) ? res.s1 : res.s2;
+      const s2 = (f1 < f2) ? res.s2 : res.s1;
+      statusText = `<span style="font-weight:bold; color:var(--win-color);">${s1} - ${s2}</span>`;
+    }
+
+    let itemClass = 'bout-item';
+    if (isCurrent) itemClass += ' current';
+    else if (res) itemClass += ' done';
+
+    html += `
+      <div class="${itemClass}" onclick="loadMatchToInput(${idx}); window.scrollTo({top: 0, behavior: 'smooth'});">
+        <span style="font-weight:600; min-width:65px;">Match ${idx+1}</span>
+        <span style="flex:1; text-align:left; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          #${f1} ${state.fencers[f1-1]} vs #${f2} ${state.fencers[f2-1]}
+        </span>
+        <span>${statusText}</span>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('fp_current_state', JSON.stringify(state));
+    let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+    const idx = history.findIndex(item => item.id === state.id);
+    if (idx !== -1) history[idx] = state;
+    else history.unshift(state);
+    localStorage.setItem('fp_history', JSON.stringify(history));
+  } catch(e) {}
+}
+</script>
+</body>
+</html>

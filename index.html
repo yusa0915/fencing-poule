@@ -1,4 +1,4 @@
-<!DOCTY<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -202,7 +202,6 @@
 </div>
 
 <script>
-// ★ここをお好きな合言葉に変更できます
 const PASSCODE = "sabre2026";
 
 const BOUT_ORDERS = {
@@ -263,7 +262,6 @@ let tempScoreL = 0;
 let tempScoreR = 0;
 let tempWinner = null;
 
-// 起動時処理
 window.onload = function() {
   try {
     const savedLang = localStorage.getItem('fp_lang');
@@ -275,14 +273,12 @@ window.onload = function() {
 
   applyLockTexts(activeLang);
 
-  // 毎回確実にロック画面を表示させるため、一旦ロック画面を強制表示
   const lockScreen = document.getElementById('lock-screen');
   if (lockScreen) {
     lockScreen.style.display = 'flex';
   }
 };
 
-// ロック画面の言語切替
 function switchLockLang(lang) {
   activeLang = lang;
   state.lang = lang;
@@ -292,8 +288,10 @@ function switchLockLang(lang) {
 
 function applyLockTexts(lang) {
   const t = I18N[lang] || I18N.ja;
-  const langSel = document.getElementById('lock-lang-select');
-  if (langSel) langSel.value = lang;
+  const lockSel = document.getElementById('lock-lang-select');
+  if (lockSel) lockSel.value = lang;
+  const mainSel = document.getElementById('lang-select');
+  if (mainSel) mainSel.value = lang;
 
   setTxt('lock-title', t.lockTitle);
   setTxt('lock-desc', t.lockDesc);
@@ -312,7 +310,6 @@ function setPlc(id, text) {
   if (el) el.placeholder = text;
 }
 
-// パスコード判定
 function attemptUnlock() {
   const inputEl = document.getElementById('passcode-input');
   if (!inputEl) return;
@@ -328,7 +325,6 @@ function attemptUnlock() {
   }
 }
 
-// メインアプリ初期化
 function initMainApp() {
   try {
     const savedCurrent = localStorage.getItem('fp_current_state');
@@ -340,17 +336,16 @@ function initMainApp() {
     }
   } catch(e) {}
 
-  if (!state.lang) {
-    state.lang = activeLang;
-  }
+  // ロック画面で選択されていた言語を確実に全体に適用
+  state.lang = activeLang;
 
   applyAppLang();
   showSetupScreen();
   loadMatchToInput(state.currentMatchIdx);
   renderAll();
+  saveState();
 }
 
-// メインアプリの言語変更
 function changeLang(lang) {
   state.lang = lang;
   activeLang = lang;
@@ -367,6 +362,8 @@ function applyAppLang() {
   const t = I18N[state.lang] || I18N.ja;
   const langSel = document.getElementById('lang-select');
   if (langSel) langSel.value = state.lang;
+  const lockSel = document.getElementById('lock-lang-select');
+  if (lockSel) lockSel.value = state.lang;
 
   setTxt('home-title', t.homeTitle);
   setTxt('setup-comp-label', t.compLabel);
@@ -450,9 +447,8 @@ function loadHistoryItem(id) {
   const found = history.find(item => item.id === id);
   if (found) {
     state = found;
-    if(state.lang) {
-      applyAppLang();
-    }
+    if(!state.lang) state.lang = activeLang;
+    applyAppLang();
     if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
     saveState();
     loadMatchToInput(state.currentMatchIdx);

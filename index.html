@@ -18,7 +18,7 @@
     --border-color: #cbd5e0;
   }
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { margin: 0; padding: 10px; background: var(--bg-color); color: #2d3748; font-size: 14px; }
+  body { margin: 0; padding: 8px; background: var(--bg-color); color: #2d3748; font-size: 14px; }
   
   /* Passcode Lock Screen */
   #lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a365d; z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -39,12 +39,14 @@
   .setup-card input, .setup-card select { width: 100%; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 4px; }
   .setup-card button { width: 100%; padding: 12px; font-size: 16px; background: var(--primary); color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; }
 
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--primary); color: white; padding: 10px 12px; border-radius: 8px; }
-  .header h1 { margin: 0; font-size: 16px; }
-  select, input, button { font-size: 14px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); }
-  button { background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+  /* Header 1行表示＆折り返し防止の調整 */
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--primary); color: white; padding: 8px 10px; border-radius: 8px; white-space: nowrap; overflow: hidden; }
+  .header h1 { margin: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 6px; }
+  
+  select, input, button { font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
+  button { background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; white-space: nowrap; }
   button:active { opacity: 0.8; }
-  button.secondary { background: #718096; }
+  button.secondary { background: #718096; white-space: nowrap; }
   button.danger { background: #e53e3e; }
 
   .card { background: var(--card-bg); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -140,7 +142,7 @@
 
 <div class="header">
   <h1 id="ui-title">Fencing Poule Memo</h1>
-  <div style="display:flex; gap:6px;">
+  <div style="display:flex; gap:4px; align-items: center; white-space: nowrap;">
     <select id="lang-select" onchange="changeLang(this.value)">
       <option value="ja">日本語</option>
       <option value="en">English</option>
@@ -216,7 +218,7 @@ const I18N = {
   ja: {
     lockTitle: "🔒 アクセス制限", lockDesc: "合言葉（パスコード）を入力してください", lockPlaceholder: "合言葉を入力", lockBtn: "ロック解除", lockError: "合言葉が違います",
     homeTitle: "Fencing Poule Home", compLabel: "大会名 / プール名", compPlaceholder: "例: ○○選手権 予選プール1", sizeLabel: "プール人数 (選手数)", startBtn: "新しいプールを開始する", historyTitle: "保存された履歴",
-    title: "フェンシング予選スコア", homeBtn: "ホームに戻る", mainCompPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了", orderTitle: "試合オーダー一覧 (Bout Order)"
+    title: "フェンシング予選スコア", homeBtn: "ホーム", mainCompPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了", orderTitle: "試合オーダー一覧 (Bout Order)"
   },
   en: {
     lockTitle: "🔒 Access Lock", lockDesc: "Please enter the passcode", lockPlaceholder: "Enter passcode", lockBtn: "Unlock", lockError: "Incorrect passcode",

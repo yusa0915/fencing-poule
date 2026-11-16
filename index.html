@@ -134,7 +134,10 @@
     
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
     
-    <h3 id="setup-history-title" style="font-size: 15px; margin-bottom: 10px; text-align: left; color: var(--primary);">保存された履歴</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 id="setup-history-title" style="font-size: 15px; margin: 0; text-align: left; color: var(--primary);">保存された履歴</h3>
+      <button type="button" class="danger" style="padding: 2px 6px; font-size: 11px;" onclick="clearAllHistory()">全履歴クリア</button>
+    </div>
     <div id="setup-history-list" style="max-height: 150px; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
   </div>
 </div>
@@ -409,6 +412,12 @@ function renderSetupHistory() {
     history = JSON.parse(localStorage.getItem('fp_history') || '[]');
   } catch(e) {}
   
+  // 厳格なバリデーション：idがあり、createdAt（作成日時）が正しく存在するデータだけを残す
+  history = history.filter(item => item && item.id && typeof item.createdAt === 'string' && item.createdAt.trim() !== '');
+  try {
+    localStorage.setItem('fp_history', JSON.stringify(history));
+  } catch(e) {}
+
   const container = document.getElementById('setup-history-list');
   if(!container) return;
   const t = I18N[state.lang] || I18N.ja;
@@ -424,7 +433,7 @@ function renderSetupHistory() {
     html += `
       <div class="history-row">
         <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
-          <div style="font-weight:bold; font-size:13px;">${title} (${item.size})</div>
+          <div style="font-weight:bold; font-size:13px;">${title} (${item.size}人)</div>
           <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
         </div>
         <div style="display:flex; gap:4px;">
@@ -468,6 +477,16 @@ function deleteHistoryItem(id) {
     localStorage.setItem('fp_history', JSON.stringify(history));
   } catch(e) {}
   renderSetupHistory();
+}
+
+function clearAllHistory() {
+  if (confirm("保存された履歴をすべてクリアしますか？")) {
+    try {
+      localStorage.removeItem('fp_history');
+      localStorage.removeItem('fp_current_state');
+    } catch(e) {}
+    renderSetupHistory();
+  }
 }
 
 function updateCompName(val) {
@@ -681,7 +700,6 @@ function renderTable() {
     ranks[item.id] = index + 1;
   });
 
-  // #列を削除し、Name列を広く配置
   let html = `<thead><tr><th>Pl</th><th>Name</th>`;
   for (let i = 1; i <= n; i++) html += `<th>${i}</th>`;
   html += `<th>V</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th></tr></thead><tbody>`;
@@ -764,8 +782,11 @@ function renderBoutOrderList() {
 
 function saveState() {
   try {
+    if (!state.id || !state.createdAt) return;
     localStorage.setItem('fp_current_state', JSON.stringify(state));
     let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+    // 壊れた履歴データを自動除外
+    history = history.filter(item => item && item.id && typeof item.createdAt === 'string' && item.createdAt.trim() !== '');
     const idx = history.findIndex(item => item.id === state.id);
     if (idx !== -1) history[idx] = state;
     else history.unshift(state);

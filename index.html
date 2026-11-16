@@ -134,9 +134,9 @@
     
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
     
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h3 id="setup-history-title" style="font-size: 15px; margin: 0; text-align: left; color: var(--primary);">保存された履歴</h3>
-      <button type="button" class="danger" style="padding: 2px 6px; font-size: 11px;" onclick="clearAllHistory()">全履歴クリア</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <h3 id="setup-history-title" style="font-size: 14px; margin: 0; text-align: left; color: var(--primary);">保存履歴</h3>
+      <span style="font-size: 11px; color: #e53e3e; cursor: pointer; text-decoration: underline;" onclick="clearAllHistory()">全履歴クリア</span>
     </div>
     <div id="setup-history-list" style="max-height: 150px; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
   </div>
@@ -217,7 +217,7 @@ const BOUT_ORDERS = {
 const I18N = {
   ja: {
     lockTitle: "🔒 アクセス制限", lockDesc: "合言葉（パスコード）を入力してください", lockPlaceholder: "合言葉を入力", lockBtn: "ロック解除", lockError: "合言葉が違います",
-    homeTitle: "Fencing Poule Home", compLabel: "大会名 / プール名", compPlaceholder: "例: ○○選手権 予選プール1", sizeLabel: "プール人数 (選手数)", startBtn: "新しいプールを開始する", historyTitle: "保存された履歴",
+    homeTitle: "Fencing Poule Home", compLabel: "大会名 / プール名", compPlaceholder: "例: ○○選手権 予選プール1", sizeLabel: "プール人数 (選手数)", startBtn: "新しいプールを開始する", historyTitle: "保存履歴",
     title: "フェンシング予選スコア", homeBtn: "ホーム", mainCompPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了", orderTitle: "試合オーダー一覧 (Bout Order)"
   },
   en: {
@@ -412,7 +412,6 @@ function renderSetupHistory() {
     history = JSON.parse(localStorage.getItem('fp_history') || '[]');
   } catch(e) {}
   
-  // 厳格なバリデーション：idがあり、createdAt（作成日時）が正しく存在するデータだけを残す
   history = history.filter(item => item && item.id && typeof item.createdAt === 'string' && item.createdAt.trim() !== '');
   try {
     localStorage.setItem('fp_history', JSON.stringify(history));
@@ -785,7 +784,6 @@ function saveState() {
     if (!state.id || !state.createdAt) return;
     localStorage.setItem('fp_current_state', JSON.stringify(state));
     let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-    // 壊れた履歴データを自動除外
     history = history.filter(item => item && item.id && typeof item.createdAt === 'string' && item.createdAt.trim() !== '');
     const idx = history.findIndex(item => item.id === state.id);
     if (idx !== -1) history[idx] = state;

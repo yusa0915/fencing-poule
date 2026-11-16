@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTY<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -95,7 +95,7 @@
   <div class="lock-card">
     <div class="lock-header">
       <h2 id="lock-title">🔒 アクセス制限</h2>
-      <select id="lock-lang-select" onchange="handleLockLangChange(this.value)" style="padding:4px; font-size:12px;">
+      <select id="lock-lang-select" onchange="switchLockLang(this.value)" style="padding:4px; font-size:12px;">
         <option value="ja">日本語</option>
         <option value="en">English</option>
         <option value="fr">Français</option>
@@ -105,8 +105,8 @@
       </select>
     </div>
     <p id="lock-desc">合言葉（パスコード）を入力してください</p>
-    <input type="password" id="passcode-input" placeholder="合言葉を入力" onkeydown="if(event.key==='Enter')checkPasscode()">
-    <button type="button" id="lock-btn" onclick="checkPasscode()">ロック解除</button>
+    <input type="password" id="passcode-input" placeholder="合言葉を入力" onkeydown="if(event.key==='Enter')attemptUnlock()">
+    <button type="button" id="lock-btn" onclick="attemptUnlock()">ロック解除</button>
     <div id="lock-error">合言葉が違います</div>
   </div>
 </div>
@@ -202,6 +202,7 @@
 </div>
 
 <script>
+// ★ここをお好きな合言葉に変更できます
 const PASSCODE = "sabre2026";
 
 const BOUT_ORDERS = {
@@ -245,7 +246,7 @@ const I18N = {
   }
 };
 
-let currentLockLang = 'ja';
+let activeLang = 'ja';
 
 let state = {
   id: null,
@@ -262,89 +263,73 @@ let tempScoreL = 0;
 let tempScoreR = 0;
 let tempWinner = null;
 
+// 起動時処理
 window.onload = function() {
-  let isUnlocked = false;
   try {
-    isUnlocked = (localStorage.getItem('fp_unlocked') === 'true');
     const savedLang = localStorage.getItem('fp_lang');
     if (savedLang && I18N[savedLang]) {
-      currentLockLang = savedLang;
+      activeLang = savedLang;
       state.lang = savedLang;
     }
   } catch(e) {}
 
-  updateLockScreenTexts(currentLockLang);
+  applyLockTexts(activeLang);
 
-  if (isUnlocked) {
-    document.getElementById('lock-screen').style.display = 'none';
-    initApp();
+  // 毎回確実にロック画面を表示させるため、一旦ロック画面を強制表示
+  const lockScreen = document.getElementById('lock-screen');
+  if (lockScreen) {
+    lockScreen.style.display = 'flex';
   }
 };
 
-function handleLockLangChange(lang) {
-  currentLockLang = lang;
+// ロック画面の言語切替
+function switchLockLang(lang) {
+  activeLang = lang;
   state.lang = lang;
   try { localStorage.setItem('fp_lang', lang); } catch(e) {}
-  updateLockScreenTexts(lang);
+  applyLockTexts(lang);
 }
 
-function updateLockScreenTexts(lang) {
+function applyLockTexts(lang) {
   const t = I18N[lang] || I18N.ja;
-  if(document.getElementById('lock-lang-select')) document.getElementById('lock-lang-select').value = lang;
-  if(document.getElementById('lock-title')) document.getElementById('lock-title').textContent = t.lockTitle;
-  if(document.getElementById('lock-desc')) document.getElementById('lock-desc').textContent = t.lockDesc;
-  if(document.getElementById('passcode-input')) document.getElementById('passcode-input').placeholder = t.lockPlaceholder;
-  if(document.getElementById('lock-btn')) document.getElementById('lock-btn').textContent = t.lockBtn;
-  if(document.getElementById('lock-error')) document.getElementById('lock-error').textContent = t.lockError;
+  const langSel = document.getElementById('lock-lang-select');
+  if (langSel) langSel.value = lang;
+
+  setTxt('lock-title', t.lockTitle);
+  setTxt('lock-desc', t.lockDesc);
+  setPlc('passcode-input', t.lockPlaceholder);
+  setTxt('lock-btn', t.lockBtn);
+  setTxt('lock-error', t.lockError);
 }
 
-function changeLang(lang) {
-  state.lang = lang;
-  try { localStorage.setItem('fp_lang', lang); } catch(e) {}
-  applyLang();
-  saveState();
-  if (document.getElementById('setup-screen') && document.getElementById('setup-screen').style.display === 'flex') {
-    renderSetupHistory();
-  }
-  renderAll();
+function setTxt(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
 }
 
-function applyLang() {
-  const t = I18N[state.lang] || I18N.ja;
-  
-  if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang;
-  if(document.getElementById('lock-lang-select')) document.getElementById('lock-lang-select').value = state.lang;
-
-  if(document.getElementById('home-title')) document.getElementById('home-title').textContent = t.homeTitle;
-  if(document.getElementById('setup-comp-label')) document.getElementById('setup-comp-label').textContent = t.compLabel;
-  if(document.getElementById('setup-size-label')) document.getElementById('setup-size-label').textContent = t.sizeLabel;
-  if(document.getElementById('setup-start-btn')) document.getElementById('setup-start-btn').textContent = t.startBtn;
-  if(document.getElementById('setup-history-title')) document.getElementById('setup-history-title').textContent = t.historyTitle;
-
-  if(document.getElementById('ui-title')) document.getElementById('ui-title').textContent = t.title;
-  if(document.getElementById('ui-home-btn')) document.getElementById('ui-home-btn').textContent = t.homeBtn;
-  if(document.getElementById('comp-name')) document.getElementById('comp-name').placeholder = t.compPlaceholder;
-  if(document.getElementById('ui-register-btn')) document.getElementById('ui-register-btn').textContent = t.reg;
-  if(document.getElementById('ui-name-hint')) document.getElementById('ui-name-hint').textContent = t.hint;
-  if(document.getElementById('ui-order-title')) document.getElementById('ui-order-title').textContent = t.orderTitle;
+function setPlc(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.placeholder = text;
 }
 
-function checkPasscode() {
+// パスコード判定
+function attemptUnlock() {
   const inputEl = document.getElementById('passcode-input');
   if (!inputEl) return;
-  const input = inputEl.value;
-  
-  if (input === PASSCODE) {
-    try { localStorage.setItem('fp_unlocked', 'true'); } catch(e) {}
-    document.getElementById('lock-screen').style.display = 'none';
-    initApp();
+  const val = inputEl.value;
+
+  if (val === PASSCODE) {
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.style.display = 'none';
+    initMainApp();
   } else {
     const errEl = document.getElementById('lock-error');
-    if(errEl) errEl.style.display = 'block';
+    if (errEl) errEl.style.display = 'block';
   }
 }
 
-function initApp() {
+// メインアプリ初期化
+function initMainApp() {
   try {
     const savedCurrent = localStorage.getItem('fp_current_state');
     if (savedCurrent) {
@@ -354,15 +339,47 @@ function initApp() {
       }
     }
   } catch(e) {}
-  
+
   if (!state.lang) {
-    state.lang = currentLockLang;
+    state.lang = activeLang;
   }
-  
-  applyLang();
+
+  applyAppLang();
   showSetupScreen();
   loadMatchToInput(state.currentMatchIdx);
   renderAll();
+}
+
+// メインアプリの言語変更
+function changeLang(lang) {
+  state.lang = lang;
+  activeLang = lang;
+  try { localStorage.setItem('fp_lang', lang); } catch(e) {}
+  applyAppLang();
+  saveState();
+  if (document.getElementById('setup-screen') && document.getElementById('setup-screen').style.display === 'flex') {
+    renderSetupHistory();
+  }
+  renderAll();
+}
+
+function applyAppLang() {
+  const t = I18N[state.lang] || I18N.ja;
+  const langSel = document.getElementById('lang-select');
+  if (langSel) langSel.value = state.lang;
+
+  setTxt('home-title', t.homeTitle);
+  setTxt('setup-comp-label', t.compLabel);
+  setTxt('setup-size-label', t.sizeLabel);
+  setTxt('setup-start-btn', t.startBtn);
+  setTxt('setup-history-title', t.historyTitle);
+
+  setTxt('ui-title', t.title);
+  setTxt('ui-home-btn', t.homeBtn);
+  setPlc('comp-name', t.compPlaceholder);
+  setTxt('ui-register-btn', t.reg);
+  setTxt('ui-name-hint', t.hint);
+  setTxt('ui-order-title', t.orderTitle);
 }
 
 function showSetupScreen() {
@@ -434,7 +451,7 @@ function loadHistoryItem(id) {
   if (found) {
     state = found;
     if(state.lang) {
-      applyLang();
+      applyAppLang();
     }
     if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
     saveState();
@@ -716,12 +733,6 @@ function renderTable() {
   table.innerHTML = html;
 }
 
-function renderBoutOrderList() {
-  const container = document.getElementById('bout-order-list');
-  if(!container) return; // Note: updated ID matching element below
-}
-
-// Fixed element rendering logic for bout order list container
 function renderBoutOrderList() {
   const container = document.getElementById('bout-order-container');
   if(!container) return;

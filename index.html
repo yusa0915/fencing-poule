@@ -95,7 +95,7 @@
   <div class="lock-card">
     <div class="lock-header">
       <h2 id="lock-title">🔒 アクセス制限</h2>
-      <select id="lock-lang-select" onchange="changeLang(this.value)" style="padding:4px; font-size:12px;">
+      <select id="lock-lang-select" onchange="handleLockLangChange(this.value)" style="padding:4px; font-size:12px;">
         <option value="ja">日本語</option>
         <option value="en">English</option>
         <option value="fr">Français</option>
@@ -245,6 +245,8 @@ const I18N = {
   }
 };
 
+let currentLockLang = 'ja';
+
 let state = {
   id: null,
   lang: 'ja',
@@ -263,20 +265,38 @@ let tempWinner = null;
 window.onload = function() {
   let isUnlocked = false;
   try {
-    isUnlocked = (localStorage.getItem('fp_unlocked'] === 'true');
+    isUnlocked = (localStorage.getItem('fp_unlocked') === 'true');
     const savedLang = localStorage.getItem('fp_lang');
     if (savedLang && I18N[savedLang]) {
+      currentLockLang = savedLang;
       state.lang = savedLang;
     }
   } catch(e) {}
 
-  applyLang();
+  updateLockScreenTexts(currentLockLang);
 
   if (isUnlocked) {
     document.getElementById('lock-screen').style.display = 'none';
     initApp();
   }
 };
+
+function handleLockLangChange(lang) {
+  currentLockLang = lang;
+  state.lang = lang;
+  try { localStorage.setItem('fp_lang', lang); } catch(e) {}
+  updateLockScreenTexts(lang);
+}
+
+function updateLockScreenTexts(lang) {
+  const t = I18N[lang] || I18N.ja;
+  if(document.getElementById('lock-lang-select')) document.getElementById('lock-lang-select').value = lang;
+  if(document.getElementById('lock-title')) document.getElementById('lock-title').textContent = t.lockTitle;
+  if(document.getElementById('lock-desc')) document.getElementById('lock-desc').textContent = t.lockDesc;
+  if(document.getElementById('passcode-input')) document.getElementById('passcode-input').placeholder = t.lockPlaceholder;
+  if(document.getElementById('lock-btn')) document.getElementById('lock-btn').textContent = t.lockBtn;
+  if(document.getElementById('lock-error')) document.getElementById('lock-error').textContent = t.lockError;
+}
 
 function changeLang(lang) {
   state.lang = lang;
@@ -295,12 +315,6 @@ function applyLang() {
   if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang;
   if(document.getElementById('lock-lang-select')) document.getElementById('lock-lang-select').value = state.lang;
 
-  if(document.getElementById('lock-title')) document.getElementById('lock-title').textContent = t.lockTitle;
-  if(document.getElementById('lock-desc')) document.getElementById('lock-desc').textContent = t.lockDesc;
-  if(document.getElementById('passcode-input')) document.getElementById('passcode-input').placeholder = t.lockPlaceholder;
-  if(document.getElementById('lock-btn')) document.getElementById('lock-btn').textContent = t.lockBtn;
-  if(document.getElementById('lock-error')) document.getElementById('lock-error').textContent = t.lockError;
-
   if(document.getElementById('home-title')) document.getElementById('home-title').textContent = t.homeTitle;
   if(document.getElementById('setup-comp-label')) document.getElementById('setup-comp-label').textContent = t.compLabel;
   if(document.getElementById('setup-size-label')) document.getElementById('setup-size-label').textContent = t.sizeLabel;
@@ -316,7 +330,10 @@ function applyLang() {
 }
 
 function checkPasscode() {
-  const input = document.getElementById('passcode-input').value;
+  const inputEl = document.getElementById('passcode-input');
+  if (!inputEl) return;
+  const input = inputEl.value;
+  
   if (input === PASSCODE) {
     try { localStorage.setItem('fp_unlocked', 'true'); } catch(e) {}
     document.getElementById('lock-screen').style.display = 'none';
@@ -334,12 +351,15 @@ function initApp() {
       const parsed = JSON.parse(savedCurrent);
       if (parsed) {
         state = parsed;
-        if (state.lang) {
-          applyLang();
-        }
       }
     }
   } catch(e) {}
+  
+  if (!state.lang) {
+    state.lang = currentLockLang;
+  }
+  
+  applyLang();
   showSetupScreen();
   loadMatchToInput(state.currentMatchIdx);
   renderAll();
@@ -696,6 +716,12 @@ function renderTable() {
   table.innerHTML = html;
 }
 
+function renderBoutOrderList() {
+  const container = document.getElementById('bout-order-list');
+  if(!container) return; // Note: updated ID matching element below
+}
+
+// Fixed element rendering logic for bout order list container
 function renderBoutOrderList() {
   const container = document.getElementById('bout-order-container');
   if(!container) return;

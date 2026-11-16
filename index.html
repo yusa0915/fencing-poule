@@ -22,9 +22,10 @@
   
   /* Passcode Lock Screen */
   #lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a365d; z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px; }
-  .lock-card { background: white; padding: 28px 24px; border-radius: 12px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-  .lock-card h2 { margin-top: 0; color: var(--primary); font-size: 18px; margin-bottom: 8px; }
-  .lock-card p { font-size: 13px; color: #718096; margin-bottom: 16px; }
+  .lock-card { background: white; padding: 28px 24px; border-radius: 12px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position: relative; }
+  .lock-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .lock-card h2 { margin: 0; color: var(--primary); font-size: 18px; text-align: left; }
+  .lock-card p { font-size: 13px; color: #718096; margin-bottom: 16px; text-align: left; }
   .lock-card input { width: 100%; padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 12px; text-align: center; }
   .lock-card button { width: 100%; padding: 12px; font-size: 16px; background: var(--primary); color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; }
   #lock-error { color: var(--lose-color); font-size: 12px; margin-top: 8px; display: none; font-weight: bold; }
@@ -92,10 +93,20 @@
 <!-- Passcode Lock Screen -->
 <div id="lock-screen">
   <div class="lock-card">
-    <h2>🔒 アクセス制限</h2>
-    <p>合言葉（パスコード）を入力してください</p>
+    <div class="lock-header">
+      <h2 id="lock-title">🔒 アクセス制限</h2>
+      <select id="lock-lang-select" onchange="changeLang(this.value)" style="padding:4px; font-size:12px;">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="it">Italiano</option>
+        <option value="zh">中文</option>
+        <option value="ko">한국어</option>
+      </select>
+    </div>
+    <p id="lock-desc">合言葉（パスコード）を入力してください</p>
     <input type="password" id="passcode-input" placeholder="合言葉を入力">
-    <button type="button" onclick="checkPasscode()">ロック解除</button>
+    <button type="button" id="lock-btn" onclick="checkPasscode()">ロック解除</button>
     <div id="lock-error">合言葉が違います</div>
   </div>
 </div>
@@ -105,24 +116,24 @@
   <div class="setup-card">
     <h2 id="home-title">Fencing Poule Home</h2>
     <div class="form-group">
-      <label>大会名 / プール名</label>
+      <label id="setup-comp-label">大会名 / プール名</label>
       <input type="text" id="setup-comp-name" placeholder="例: ○○選手権 予選プール1">
     </div>
     <div class="form-group">
-      <label>プール人数 (選手数)</label>
+      <label id="setup-size-label">プール人数 (選手数)</label>
       <select id="setup-poule-size">
-        <option value="3">3人プール</option>
-        <option value="4">4人プール</option>
-        <option value="5">5人プール</option>
-        <option value="6" selected>6人プール</option>
-        <option value="7">7人プール</option>
+        <option value="3">3人</option>
+        <option value="4">4人</option>
+        <option value="5">5人</option>
+        <option value="6" selected>6人</option>
+        <option value="7">7人</option>
       </select>
     </div>
-    <button type="button" onclick="startNewPouleFromSetup()">新しいプールを開始する</button>
+    <button type="button" id="setup-start-btn" onclick="startNewPouleFromSetup()">新しいプールを開始する</button>
     
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
     
-    <h3 style="font-size: 15px; margin-bottom: 10px; text-align: left; color: var(--primary);">保存された履歴</h3>
+    <h3 id="setup-history-title" style="font-size: 15px; margin-bottom: 10px; text-align: left; color: var(--primary);">保存された履歴</h3>
     <div id="setup-history-list" style="max-height: 150px; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
   </div>
 </div>
@@ -186,24 +197,12 @@
 </div>
 
 <div class="card">
-  <h3 style="font-size:14px; margin-bottom:8px; color:var(--primary);">試合オーダー一覧 (Bout Order)</h3>
+  <h3 id="ui-order-title" style="font-size:14px; margin-bottom:8px; color:var(--primary);">試合オーダー一覧 (Bout Order)</h3>
   <div class="bout-order-list" id="bout-order-container"></div>
 </div>
 
 <script>
-// ★ここをお好きな合言葉に変更できます
 const PASSCODE = "sabre2026";
-
-function checkPasscode() {
-  const input = document.getElementById('passcode-input').value;
-  if (input === PASSCODE) {
-    try { localStorage.setItem('fp_unlocked', 'true'); } catch(e) {}
-    document.getElementById('lock-screen').style.display = 'none';
-    initApp();
-  } else {
-    document.getElementById('lock-error').style.display = 'block';
-  }
-}
 
 const BOUT_ORDERS = {
   3: [[2,3],[1,2],[3,1]],
@@ -214,8 +213,36 @@ const BOUT_ORDERS = {
 };
 
 const I18N = {
-  ja: { title: "フェンシング予選スコア", homeBtn: "ホームに戻る", compPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了" },
-  en: { title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Tournament Name", next: "Next", reg: "Save & Next Bout", hint: "*Tap name to edit / Tap cell to select bout", fencer: "Fencer", load: "Load", del: "Del", complete: "All Bouts Done" }
+  ja: {
+    lockTitle: "🔒 アクセス制限", lockDesc: "合言葉（パスコード）を入力してください", lockPlaceholder: "合言葉を入力", lockBtn: "ロック解除", lockError: "合言葉が違います",
+    homeTitle: "Fencing Poule Home", compLabel: "大会名 / プール名", sizeLabel: "プール人数 (選手数)", startBtn: "新しいプールを開始する", historyTitle: "保存された履歴",
+    title: "フェンシング予選スコア", homeBtn: "ホームに戻る", compPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了", orderTitle: "試合オーダー一覧 (Bout Order)"
+  },
+  en: {
+    lockTitle: "🔒 Access Lock", lockDesc: "Please enter the passcode", lockPlaceholder: "Enter passcode", lockBtn: "Unlock", lockError: "Incorrect passcode",
+    homeTitle: "Fencing Poule Home", compLabel: "Tournament / Poule Name", sizeLabel: "Poule Size (Fencers)", startBtn: "Start New Poule", historyTitle: "Saved History",
+    title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Tournament Name", next: "Next", reg: "Save & Next Bout", hint: "*Tap name to edit / Tap cell to select bout", fencer: "Fencer", load: "Load", del: "Del", complete: "All Bouts Done", orderTitle: "Bout Order List"
+  },
+  fr: {
+    lockTitle: "🔒 Verrouillage", lockDesc: "Veuillez entrer le mot de passe", lockPlaceholder: "Mot de passe", lockBtn: "Déverrouiller", lockError: "Mot de passe incorrect",
+    homeTitle: "Accueil Poule", compLabel: "Nom du tournoi / poule", sizeLabel: "Taille de la poule", startBtn: "Commencer une nouvelle poule", historyTitle: "Historique",
+    title: "Mémo Poule Escrime", homeBtn: "Accueil", compPlaceholder: "Nom du tournoi", next: "Suivant", reg: "Enregistrer & Suivant", hint: "*Appuyez sur le nom pour modifier", fencer: "Tireur", load: "Ouvrir", del: "Suppr", complete: "Matchs terminés", orderTitle: "Ordre des matchs"
+  },
+  it: {
+    lockTitle: "🔒 Blocco Accesso", lockDesc: "Inserisci la password", lockPlaceholder: "Password", lockBtn: "Sblocca", lockError: "Password errata",
+    homeTitle: "Fencing Poule Home", compLabel: "Torneo / Girone", sizeLabel: "Numero Atleti", startBtn: "Nuovo Girone", historyTitle: "Cronologia",
+    title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Nome Torneo", next: "Successivo", reg: "Salva e Avanti", hint: "*Tocca il nome per modificare", fencer: "Atleta", load: "Apri", del: "Elimina", complete: "Tutti i0 match finiti", orderTitle: "Ordine Assalti"
+  },
+  zh: {
+    lockTitle: "🔒 访问限制", lockDesc: "请输入访问口令", lockPlaceholder: "输入口令", lockBtn: "解锁", lockError: "口令错误",
+    homeTitle: "击剑小组赛主页", compLabel: "赛事/小组名称", sizeLabel: "小组人数 (选手数)", startBtn: "开始新小组赛", historyTitle: "历史记录",
+    title: "击剑小组赛记分", homeBtn: "首页", compPlaceholder: "赛事名称", next: "下场", reg: "保存并进入下场", hint: "*点击姓名修改 / 点击格子选择比赛", fencer: "选手", load: "加载", del: "删除", complete: "全部结束", orderTitle: "比赛场次顺序"
+  },
+  ko: {
+    lockTitle: "🔒 접근 잠금", lockDesc: "비밀번호를 입력하세요", lockPlaceholder: "비밀번호 입력", lockBtn: "잠금 해제", lockError: "비밀번호가 틀렸습니다",
+    homeTitle: "펜싱 풀 홈", compLabel: "대회명 / 풀 이름", sizeLabel: "풀 인원수 (선수 수)", startBtn: "새 풀 시작하기", historyTitle: "저장된 기록",
+    title: "펜싱 풀 스코어", homeBtn: "홈", compPlaceholder: "대회명", next: "다음", reg: "저장 및 다음 경기", hint: "*이름을 터치하여 수정 / 칸을 터치하여 경기 선택", fencer: "선수", load: "불러오기", del: "삭제", complete: "모든 경기 종료", orderTitle: "경기 순서"
+  }
 };
 
 let state = {
@@ -237,441 +264,6 @@ window.onload = function() {
   let isUnlocked = false;
   try {
     isUnlocked = (localStorage.getItem('fp_unlocked') === 'true');
-  } catch(e) {}
-
-  if (isUnlocked) {
-    document.getElementById('lock-screen').style.display = 'none';
-    initApp();
-  }
-};
-
-function initApp() {
-  try {
-    const savedCurrent = localStorage.getItem('fp_current_state');
-    if (savedCurrent) {
-      state = JSON.parse(savedCurrent);
-      if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang || 'ja';
-      if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
-    }
-  } catch(e) {}
-  showSetupScreen();
-  applyLang();
-  loadMatchToInput(state.currentMatchIdx);
-  renderAll();
-}
-
-function showSetupScreen() {
-  const nameEl = document.getElementById('setup-comp-name');
-  const sizeEl = document.getElementById('setup-poule-size');
-  if(nameEl) nameEl.value = state.compName || '';
-  if(sizeEl) sizeEl.value = state.size || 6;
-  renderSetupHistory();
-  const screen = document.getElementById('setup-screen');
-  if(screen) screen.style.display = 'flex';
-}
-
-function startNewPouleFromSetup() {
-  const nameInput = document.getElementById('setup-comp-name').value.trim();
-  const sizeInput = parseInt(document.getElementById('setup-poule-size').value, 10);
-  
-  initNewPoule(sizeInput);
-  state.compName = nameInput;
-  const compNameEl = document.getElementById('comp-name');
-  if(compNameEl) compNameEl.value = nameInput;
-  saveState();
-  
-  const screen = document.getElementById('setup-screen');
-  if(screen) screen.style.display = 'none';
-  renderAll();
-}
-
-function renderSetupHistory() {
-  let history = [];
-  try {
-    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-  } catch(e) {}
-  
-  const container = document.getElementById('setup-history-list');
-  if(!container) return;
-  const t = I18N[state.lang] || I18N.ja;
-  
-  if (history.length === 0) {
-    container.innerHTML = '<div style="font-size:12px; color:#718096; text-align:center; padding: 10px;">保存された履歴はありません</div>';
-    return;
-  }
-
-  let html = '';
-  history.forEach(item => {
-    const title = item.compName && item.compName.trim() !== '' ? item.compName : item.createdAt;
-    html += `
-      <div class="history-row">
-        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
-          <div style="font-weight:bold; font-size:13px;">${title} (${item.size}人)</div>
-          <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
-        </div>
-        <div style="display:flex; gap:4px;">
-          <button type="button" style="padding:4px 8px; font-size:12px;" onclick="loadHistoryItem('${item.id}')">${t.load}</button>
-          <button type="button" class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteHistoryItem('${item.id}')">${t.del}</button>
-        </div>
-      </div>
-    `;
-  });
-  container.innerHTML = html;
-}
-
-function loadHistoryItem(id) {
-  let history = [];
-  try {
-    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-  } catch(e) {}
-  
-  const found = history.find(item => item.id === id);
-  if (found) {
-    state = found;
-    if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang || 'ja';
-    if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
-    saveState();
-    applyLang();
-    loadMatchToInput(state.currentMatchIdx);
-    renderAll();
-    const screen = document.getElementById('setup-screen');
-    if(screen) screen.style.display = 'none';
-  }
-}
-
-function deleteHistoryItem(id) {
-  let history = [];
-  try {
-    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-  } catch(e) {}
-  
-  history = history.filter(item => item.id !== id);
-  try {
-    localStorage.setItem('fp_history', JSON.stringify(history));
-  } catch(e) {}
-  renderSetupHistory();
-}
-
-function updateCompName(val) {
-  state.compName = val;
-  saveState();
-}
-
-function formatNow() {
-  const d = new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-
-function initNewPoule(size) {
-  size = parseInt(size);
-  const t = I18N[state.lang] || I18N.ja;
-  state = {
-    id: 'poule_' + Date.now(),
-    lang: state.lang,
-    compName: document.getElementById('setup-comp-name') ? document.getElementById('setup-comp-name').value : '',
-    createdAt: formatNow(),
-    size: size,
-    fencers: Array.from({length: size}, (_, i) => `${t.fencer} ${i+1}`),
-    results: {},
-    currentMatchIdx: 0
-  };
-  saveState();
-  loadMatchToInput(0);
-  renderAll();
-}
-
-function changeLang(lang) {
-  state.lang = lang;
-  applyLang();
-  saveState();
-  renderAll();
-}
-
-function applyLang() {
-  const t = I18N[state.lang] || I18N.ja;
-  if(document.getElementById('ui-title')) document.getElementById('ui-title').textContent = t.title;
-  if(document.getElementById('ui-home-btn')) document.getElementById('ui-home-btn').textContent = t.homeBtn;
-  if(document.getElementById('comp-name')) document.getElementById('comp-name').placeholder = t.compPlaceholder;
-  if(document.getElementById('ui-register-btn')) document.getElementById('ui-register-btn').textContent = t.reg;
-  if(document.getElementById('ui-name-hint')) document.getElementById('ui-name-hint').textContent = t.hint;
-}
-
-function getMatchKey(a, b) {
-  return a < b ? `${a}-${b}` : `${b}-${a}`;
-}
-
-function loadMatchToInput(idx) {
-  const order = BOUT_ORDERS[state.size];
-  if (!order || idx >= order.length) idx = 0;
-  state.currentMatchIdx = idx;
-  const [f1, f2] = order[idx];
-  const key = getMatchKey(f1, f2);
-  const existing = state.results[key];
-
-  if (existing) {
-    tempScoreL = (f1 < f2) ? existing.s1 : existing.s2;
-    tempScoreR = (f1 < f2) ? existing.s2 : existing.s1;
-    tempWinner = (existing.winner === f1) ? 'L' : 'R';
-  } else {
-    tempScoreL = 0;
-    tempScoreR = 0;
-    tempWinner = null;
-  }
-  updateInputUI();
-}
-
-function adjScore(side, delta) {
-  if (side === 'L') {
-    tempScoreL = Math.max(0, Math.min(5, tempScoreL + delta));
-  } else {
-    tempScoreR = Math.max(0, Math.min(5, tempScoreR + delta));
-  }
-  if (tempScoreL === 5 && tempScoreR < 5) tempWinner = 'L';
-  else if (tempScoreR === 5 && tempScoreL < 5) tempWinner = 'R';
-  else if (tempScoreL > tempScoreR) tempWinner = 'L';
-  else if (tempScoreR > tempScoreL) tempWinner = 'R';
-  else tempWinner = null;
-
-  updateInputUI();
-}
-
-function setWinner(side) {
-  tempWinner = side;
-  updateInputUI();
-}
-
-function updateInputUI() {
-  const order = BOUT_ORDERS[state.size];
-  if (!order) return;
-  const [f1, f2] = order[state.currentMatchIdx];
-  const t = I18N[state.lang] || I18N.ja;
-
-  if(document.getElementById('match-progress')) document.getElementById('match-progress').textContent = `Match ${state.currentMatchIdx + 1} / ${order.length}`;
-  
-  let nextIdx = -1;
-  for (let i = 1; i <= order.length; i++) {
-    const checkIdx = (state.currentMatchIdx + i) % order.length;
-    const [nf1, nf2] = order[checkIdx];
-    if (!state.results[getMatchKey(nf1, nf2)]) {
-      nextIdx = checkIdx;
-      break;
-    }
-  }
-  if (nextIdx !== -1) {
-    const [nf1, nf2] = order[nextIdx];
-    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${state.fencers[nf1-1]} vs ${state.fencers[nf2-1]}`;
-  } else {
-    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${t.complete}`;
-  }
-
-  if(document.getElementById('left-num')) document.getElementById('left-num').textContent = `#${f1}`;
-  if(document.getElementById('left-name')) document.getElementById('left-name').textContent = state.fencers[f1 - 1];
-  if(document.getElementById('left-score')) document.getElementById('left-score').textContent = tempScoreL;
-
-  if(document.getElementById('right-num')) document.getElementById('right-num').textContent = `#${f2}`;
-  if(document.getElementById('right-name')) document.getElementById('right-name').textContent = state.fencers[f2 - 1];
-  if(document.getElementById('right-score')) document.getElementById('right-score').textContent = tempScoreR;
-
-  const lBtn = document.getElementById('left-win-btn');
-  const rBtn = document.getElementById('right-win-btn');
-  if(lBtn) lBtn.className = 'btn-win' + (tempWinner === 'L' ? ' active' : '');
-  if(rBtn) rBtn.className = 'btn-win' + (tempWinner === 'R' ? ' active' : '');
-}
-
-function registerMatch() {
-  const order = BOUT_ORDERS[state.size];
-  const [f1, f2] = order[state.currentMatchIdx];
-
-  if (!tempWinner) {
-    if (tempScoreL > tempScoreR) tempWinner = 'L';
-    else if (tempScoreR > tempScoreL) tempWinner = 'R';
-    else {
-      alert("勝者（WIN）を選択してください");
-      return;
-    }
-  }
-
-  const key = getMatchKey(f1, f2);
-  const winnerNum = (tempWinner === 'L') ? f1 : f2;
-  state.results[key] = {
-    s1: (f1 < f2) ? tempScoreL : tempScoreR,
-    s2: (f1 < f2) ? tempScoreR : tempScoreL,
-    winner: winnerNum
-  };
-
-  let nextIdx = (state.currentMatchIdx + 1) % order.length;
-  for (let i = 1; i <= order.length; i++) {
-    const checkIdx = (state.currentMatchIdx + i) % order.length;
-    const [nf1, nf2] = order[checkIdx];
-    if (!state.results[getMatchKey(nf1, nf2)]) {
-      nextIdx = checkIdx;
-      break;
-    }
-  }
-
-  saveState();
-  loadMatchToInput(nextIdx);
-  renderAll();
-}
-
-function selectMatchByFencers(r, c) {
-  if (r === c) return;
-  const order = BOUT_ORDERS[state.size];
-  const idx = order.findIndex(([a, b]) => (a === r && b === c) || (a === c && b === r));
-  if (idx !== -1) {
-    loadMatchToInput(idx);
-    renderAll();
-  }
-}
-
-function editFencerName(idx) {
-  const current = state.fencers[idx];
-  const newName = prompt(`#${idx+1} 選手名を入力:`, current);
-  if (newName !== null && newName.trim() !== "") {
-    state.fencers[idx] = newName.trim();
-    saveState();
-    renderAll();
-  }
-}
-
-function renderAll() {
-  const timeDisplay = document.getElementById('start-time-display');
-  if(timeDisplay) timeDisplay.textContent = `Start: ${state.createdAt}`;
-  updateInputUI();
-  renderTable();
-  renderBoutOrderList();
-}
-
-function renderTable() {
-  const table = document.getElementById('poule-table');
-  if(!table) return;
-  const n = state.size;
-  const order = BOUT_ORDERS[n];
-  if (!order) return;
-  const [curF1, curF2] = order[state.currentMatchIdx];
-
-  let stats = Array.from({length: n}, (_, i) => ({ id: i+1, v: 0, m: 0, ts: 0, tr: 0 }));
-  for (let r = 1; r <= n; r++) {
-    for (let c = 1; c <= n; c++) {
-      if (r === c) continue;
-      const res = state.results[getMatchKey(r, c)];
-      if (res) {
-        stats[r-1].m++;
-        const myScore = (r < c) ? res.s1 : res.s2;
-        const oppScore = (r < c) ? res.s2 : res.s1;
-        stats[r-1].ts += myScore;
-        stats[r-1].tr += oppScore;
-        if (res.winner === r) stats[r-1].v++;
-      }
-    }
-  }
-
-  let ranked = [...stats].map(st => ({
-    ...st,
-    vm: st.m > 0 ? st.v / st.m : 0,
-    ind: st.ts - st.tr
-  })).sort((a, b) => {
-    if (b.vm !== a.vm) return b.vm - a.vm;
-    if (b.ind !== a.ind) return b.ind - a.ind;
-    return b.ts - a.ts;
-  });
-
-  let ranks = {};
-  ranked.forEach((item, index) => {
-    ranks[item.id] = index + 1;
-  });
-
-  let html = `<thead><tr><th>Pl</th><th>Name</th><th>#</th>`;
-  for (let i = 1; i <= n; i++) html += `<th>${i}</th>`;
-  html += `<th>V</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th></tr></thead><tbody>`;
-
-  for (let r = 1; r <= n; r++) {
-    const st = stats[r-1];
-    const vm = st.m > 0 ? (st.v / st.m).toFixed(2) : '.00';
-    const ind = st.ts - st.tr;
-    const pl = ranks[r];
-
-    html += `<tr>`;
-    html += `<td style="font-weight:bold; background:#edf2f7;">${pl}</td>`;
-    html += `<td class="name-cell" onclick="editFencerName(${r-1})">${state.fencers[r-1]}</td>`;
-    html += `<th>${r}</th>`;
-
-    for (let c = 1; c <= n; c++) {
-      if (r === c) {
-        html += `<td class="diag"></td>`;
-      } else {
-        const isCurrent = (r === curF1 && c === curF2) || (r === curF2 && c === curF1);
-        const res = state.results[getMatchKey(r, c)];
-        let cellContent = '';
-        if (res) {
-          const myScore = (r < c) ? res.s1 : res.s2;
-          if (res.winner === r) {
-            cellContent = `<span class="res-v">V${myScore}</span>`;
-          } else {
-            cellContent = `<span class="res-d">${myScore}</span>`;
-          }
-        }
-        html += `<td class="clickable ${isCurrent ? 'current-cell' : ''}" onclick="selectMatchByFencers(${r},${c})">${cellContent}</td>`;
-      }
-    }
-
-    html += `<td class="stat-cell">${st.v}</td>`;
-    html += `<td class="stat-cell">${vm}</td>`;
-    html += `<td class="stat-cell">${st.ts}</td>`;
-    html += `<td class="stat-cell">${st.tr}</td>`;
-    html += `<td class="stat-cell">${ind > 0 ? '+'+ind : ind}</td>`;
-    html += `</tr>`;
-  }
-  html += `</tbody>`;
-  table.innerHTML = html;
-}
-
-function renderBoutOrderList() {
-  const container = document.getElementById('bout-order-container');
-  if(!container) return;
-  const order = BOUT_ORDERS[state.size];
-  if (!order) return;
-
-  let html = '';
-  order.forEach(([f1, f2], idx) => {
-    const key = getMatchKey(f1, f2);
-    const res = state.results[key];
-    const isCurrent = (idx === state.currentMatchIdx);
-    
-    let statusText = '<span style="color:#718096;">未</span>';
-    if (res) {
-      const s1 = (f1 < f2) ? res.s1 : res.s2;
-      const s2 = (f1 < f2) ? res.s2 : res.s1;
-      statusText = `<span style="font-weight:bold; color:var(--win-color);">${s1} - ${s2}</span>`;
-    }
-
-    let itemClass = 'bout-item';
-    if (isCurrent) itemClass += ' current';
-    else if (res) itemClass += ' done';
-
-    html += `
-      <div class="${itemClass}" onclick="loadMatchToInput(${idx}); window.scrollTo({top: 0, behavior: 'smooth'});">
-        <span style="font-weight:600; min-width:65px;">Match ${idx+1}</span>
-        <span style="flex:1; text-align:left; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-          #${f1} ${state.fencers[f1-1]} vs #${f2} ${state.fencers[f2-1]}
-        </span>
-        <span>${statusText}</span>
-      </div>
-    `;
-  });
-  container.innerHTML = html;
-}
-
-function saveState() {
-  try {
-    localStorage.setItem('fp_current_state', JSON.stringify(state));
-    let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-    const idx = history.findIndex(item => item.id === state.id);
-    if (idx !== -1) history[idx] = state;
-    else history.unshift(state);
-    localStorage.setItem('fp_history', JSON.stringify(history));
-  } catch(e) {}
-}
-</script>
-</body>
-</html>
+    const savedLang = localStorage.getItem('fp_lang');
+    if (savedLang && I18N[savedLang]) {
+      state

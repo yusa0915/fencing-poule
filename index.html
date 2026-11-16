@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fencing Poule Memo</title>
+<style>
+  :root {
+    --bg-color: #f4f6f9;
+    --card-bg: #ffffff;
+    --primary: #1a365d;
+    --accent: #2b6cb0;
+    --current-match: #fefcbf;
+    --current-border: #d69e2e;
+    --win-color: #2f855a;
+    --lose-color: #c53030;
+    --border-color: #cbd5e0;
+  }
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; padding: 10px; background: var(--bg-color); color: #2d3748; font-size: 14px; }
+  
+  /* Setup / Home Screen */
+  #setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 54, 93, 0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+  .setup-card { background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+  .setup-card h2 { margin-top: 0; color: var(--primary); font-size: 20px; margin-bottom: 16px; }
+  .setup-card .form-group { margin-bottom: 15px; text-align: left; }
+  .setup-card label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #555; }
+  .setup-card input, .setup-card select { width: 100%; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 4px; }
+  .setup-card button { width: 100%; padding: 12px; font-size: 16px; background: var(--primary); color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--primary); color: white; padding: 10px 12px; border-radius: 8px; }
+  .header h1 { margin: 0; font-size: 16px; }
+  select, input, button { font-size: 14px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); }
+  button { background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+  button:active { opacity: 0.8; }
+  button.secondary { background: #718096; }
+  button.danger { background: #e53e3e; }
+
+  .card { background: var(--card-bg); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .row input[type="text"] { flex: 1; min-width: 120px; }
+
+  /* Active Match Box */
+  .match-box { border: 2px solid var(--current-border); background: #fffff0; }
+  .match-header { display: flex; justify-content: space-between; font-size: 12px; color: #744210; font-weight: bold; margin-bottom: 8px; }
+  .vs-container { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: center; }
+  .fencer-panel { flex: 1; background: white; padding: 10px 6px; border-radius: 8px; border: 1px solid #e2e8f0; }
+  .fencer-num { font-size: 11px; color: #718096; }
+  .fencer-name { font-size: 16px; font-weight: bold; margin: 4px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .score-controls { display: flex; justify-content: center; align-items: center; gap: 6px; }
+  .score-val { font-size: 24px; font-weight: bold; width: 36px; text-align: center; }
+  .btn-score { width: 34px; height: 34px; font-size: 18px; padding: 0; border-radius: 50%; background: #edf2f7; color: #2d3748; border: 1px solid #cbd5e0; }
+  .btn-win { width: 100%; margin-top: 8px; padding: 6px; font-size: 12px; background: #edf2f7; color: #2d3748; border: 1px solid #cbd5e0; }
+  .btn-win.active { background: var(--win-color); color: white; border-color: var(--win-color); }
+  .register-btn { width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; background: var(--primary); }
+
+  /* Fencing Time Style Matrix */
+  .table-wrap { overflow-x: auto; }
+  table.ft-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; background: white; }
+  table.ft-table th, table.ft-table td { border: 1px solid #a0aec0; padding: 4px 2px; min-width: 30px; height: 32px; }
+  table.ft-table th { background: #edf2f7; font-weight: bold; }
+  td.name-cell { text-align: left; padding-left: 6px; font-weight: bold; min-width: 90px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td.diag { background: #2d3748; }
+  td.clickable { cursor: pointer; }
+  td.current-cell { background: var(--current-match) !important; box-shadow: inset 0 0 0 2px var(--current-border); }
+  .res-v { color: var(--win-color); font-weight: bold; font-size: 12px; }
+  .res-d { color: var(--lose-color); font-size: 12px; }
+  .stat-cell { background: #f7fafc; font-weight: bold; }
+
+  /* Bout Order List Style */
+  .bout-order-list { display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; }
+  .bout-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .bout-item:hover { background: #edf2f7; }
+  .bout-item.current { background: var(--current-match); border-color: var(--current-border); font-weight: bold; }
+  .bout-item.done { opacity: 0.7; background: #fff; }
+
+  /* Modal / History list */
+  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<!-- Setup / Home Screen -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <h2 id="home-title">Fencing Poule Home</h2>
+    <div class="form-group">
+      <label>大会名 / プール名</label>
+      <input type="text" id="setup-comp-name" placeholder="例: ○○選手権 予選プール1">
+    </div>
+    <div class="form-group">
+      <label>プール人数 (選手数)</label>
+      <select id="setup-poule-size">
+        <option value="3">3人プール</option>
+        <option value="4">4人プール</option>
+        <option value="5">5人プール</option>
+        <option value="6" selected>6人プール</option>
+        <option value="7">7人プール</option>
+      </select>
+    </div>
+    <button onclick="startNewPouleFromSetup()">新しいプールを開始する</button>
+    
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
+    
+    <h3 style="font-size: 15px; margin-bottom: 10px; text-align: left; color: var(--primary);">保存された履歴</h3>
+    <div id="setup-history-list" style="max-height: 150px; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
+  </div>
+</div>
+
+<div class="header">
+  <h1 id="ui-title">Fencing Poule Memo</h1>
+  <div style="display:flex; gap:6px;">
+    <select id="lang-select" onchange="changeLang(this.value)">
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="it">Italiano</option>
+      <option value="zh">中文</option>
+      <option value="ko">한국어</option>
+    </select>
+    <button class="secondary" onclick="showSetupScreen()" id="ui-home-btn">ホームに戻る</button>
+  </div>
+</div>
+
+<!-- Setup Card (Inside App) -->
+<div class="card">
+  <div class="row">
+    <input type="text" id="comp-name" placeholder="大会名（空欄時は日時）" oninput="updateCompName(this.value)">
+    <span id="start-time-display" style="font-size:11px; color:#718096; align-self: center;"></span>
+  </div>
+</div>
+
+<!-- Active Match Input Card -->
+<div class="card match-box" id="match-input-card">
+  <div class="match-header">
+    <span id="match-progress">Match 1 / 15</span>
+    <span id="next-match-info">次の試合: -</span>
+  </div>
+  <div class="vs-container">
+    <div class="fencer-panel">
+      <div class="fencer-num" id="left-num">#1</div>
+      <div class="fencer-name" id="left-name">選手 1</div>
+      <div class="score-controls">
+        <button class="btn-score" onclick="adjScore('L', -1)">-</button>
+        <div class="score-val" id="left-score">0</div>
+        <button class="btn-score" onclick="adjScore('L', 1)">+</button>
+      </div>
+      <button class="btn-win" id="left-win-btn" onclick="setWinner('L')">WIN (V)</button>
+    </div>
+    <div style="font-weight:bold; color:#a0aec0;">VS</div>
+    <div class="fencer-panel">
+      <div class="fencer-num" id="right-num">#2</div>
+      <div class="fencer-name" id="right-name">選手 2</div>
+      <div class="score-controls">
+        <button class="btn-score" onclick="adjScore('R', -1)">-</button>
+        <div class="score-val" id="right-score">0</div>
+        <button class="btn-score" onclick="adjScore('R', 1)">+</button>
+      </div>
+      <button class="btn-win" id="right-win-btn" onclick="setWinner('R')">WIN (V)</button>
+    </div>
+  </div>
+  <button class="register-btn" onclick="registerMatch()" id="ui-register-btn">登録して次の試合へ</button>
+</div>
+
+<!-- Fencing Time Style Poule Sheet -->
+<div class="card table-wrap">
+  <table class="ft-table" id="poule-table"></table>
+  <div style="margin-top:8px; font-size:11px; color:#718096;" id="ui-name-hint">※選手名欄をタップで名前変更 / マスをタップで試合選択</div>
+</div>
+
+<!-- Bout Order List Card -->
+<div class="card">
+  <h3 style="font-size:14px; margin-bottom:8px; color:var(--primary);">試合オーダー一覧 (Bout Order)</h3>
+  <div class="bout-order-list" id="bout-order-container">
+    <!-- 動的にリストが生成されます -->
+  </div>
+</div>
+
+<script>
+const BOUT_ORDERS = {
+  3: [[2,3],[1,2],[3,1]],
+  4: [[1,4],[2,3],[1,3],[2,4],[3,4],[1,2]],
+  5: [[1,2],[3,4],[5,1],[2,3],[5,4],[1,3],[2,5],[4,1],[3,5],[4,2]],
+  6: [[1,2],[4,3],[6,5],[3,1],[2,6],[5,4],[1,6],[3,5],[4,2],[5,1],[6,4],[2,3],[1,4],[5,2],[3,6]],
+  7: [[1,4],[2,5],[3,6],[7,1],[5,4],[2,3],[6,7],[5,1],[4,3],[6,2],[5,7],[3,1],[4,6],[7,2],[3,5],[1,6],[2,4],[7,3],[6,5],[1,2],[4,7]]
+};
+
+const I18N = {
+  ja: { title: "フェンシング予選スコア", homeBtn: "ホームに戻る", compPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了" },
+  en: { title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Tournament Name", next: "Next", reg: "Save & Next Bout", hint: "*Tap name to edit / Tap cell to select bout", fencer: "Fencer", load: "Load", del: "Del", complete: "All Bouts Done" },
+  fr: { title: "Feuille de Poule", homeBtn: "Accueil", compPlaceholder: "Nom du tournoi", next: "Suivant", reg: "Enregistrer & Suivant", hint: "*Touchez le nom pour modifier", fencer: "Tireur", load: "Ouvrir", del: "Suppr", complete: "Poule terminée" },
+  it: { title: "Foglio Girone", homeBtn: "Home", compPlaceholder: "Nome Torneo", next: "Prossimo", reg: "Salva e Prossimo", hint: "*Tocca il nome per modificare", fencer: "Atleta", load: "Apri", del: "Elim", complete: "Girone completato" },
+  zh: { title: "击剑小组赛记录", homeBtn: "主页", compPlaceholder: "比赛名称", next: "下一场", reg: "保存并进入下一场", hint: "※点击选手姓名可编辑", fencer: "选手", load: "打开", del: "删除", complete: "全部比赛结束" },
+  ko: { title: "펜싱 뿔 스코어", homeBtn: "홈으로", compPlaceholder: "대회명", next: "다음 경기", reg: "등록 및 다음 경기", hint: "※선수 이름 탭하여 수정", fencer: "선수", load: "열기", del: "삭제", complete: "모든 경기 종료" }
+};
+
+let state = {
+  id: null,
+  lang: 'ja',
+  compName: '',
+  createdAt: '',
+  size: 6,
+  fencers: [],
+  results: {},
+  currentMatchIdx: 0
+};
+
+let tempScoreL = 0;
+let tempScoreR = 0;
+let tempWinner = null;
+
+window.onload = () => {
+  const savedCurrent = localStorage.getItem('fp_current_state');
+  if (savedCurrent) {
+    state = JSON.parse(savedCurrent);
+    document.getElementById('lang-select').value = state.lang || 'ja';
+    document.getElementById('comp-name').value = state.compName;
+  }
+  showSetupScreen();
+  applyLang();
+  loadMatchToInput(state.currentMatchIdx);
+  renderAll();
+};
+
+function showSetupScreen() {
+  document.getElementById('setup-comp-name').value = state.compName || '';
+  document.getElementById('setup-poule-size').value = state.size || 6;
+  renderSetupHistory();
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+function startNewPouleFromSetup() {
+  const nameInput = document.getElementById('setup-comp-name').value.trim();
+  const sizeInput = parseInt(document.getElementById('setup-poule-size').value, 10);
+  
+  initNewPoule(sizeInput);
+  state.compName = nameInput;
+  document.getElementById('comp-name').value = nameInput;
+  saveState();
+  
+  document.getElementById('setup-screen').style.display = 'none';
+  renderAll();
+}
+
+function renderSetupHistory() {
+  const history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  const container = document.getElementById('setup-history-list');
+  const t = I18N[state.lang] || I18N.ja;
+  
+  if (history.length === 0) {
+    container.innerHTML = '<div style="font-size:12px; color:#718096; text-align:center; padding: 10px;">保存された履歴はありません</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  history.forEach(item => {
+    const title = item.compName && item.compName.trim() !== '' ? item.compName : item.createdAt;
+    const div = document.createElement('div');
+    div.className = 'history-row';
+    div.innerHTML = `
+      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
+        <div style="font-weight:bold; font-size:13px;">${title} (${item.size}人)</div>
+        <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
+      </div>
+      <div style="display:flex; gap:4px;">
+        <button style="padding:4px 8px; font-size:12px;" onclick="loadHistoryItem('${item.id}')">${t.load}</button>
+        <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteHistoryItem('${item.id}')">${t.del}</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function loadHistoryItem(id) {
+  const history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  const found = history.find(item => item.id === id);
+  if (found) {
+    state = found;
+    document.getElementById('lang-select').value = state.lang || 'ja';
+    document.getElementById('comp-name').value = state.compName;
+    saveState();
+    applyLang();
+    loadMatchToInput(state.currentMatchIdx);
+    renderAll();
+    document.getElementById('setup-screen').style.display = 'none';
+  }
+}
+
+function deleteHistoryItem(id) {
+  let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  history = history.filter(item => item.id !== id);
+  localStorage.setItem('fp_history', JSON.stringify(history));
+  renderSetupHistory();
+}
+
+function updateCompName(val) {
+  state.compName = val;
+  saveState();
+}
+
+function formatNow() {
+  const d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function initNewPoule(size) {
+  size = parseInt(size);
+  const t = I18N[state.lang] || I18N.ja;
+  state = {
+    id: 'poule_' + Date.now(),
+    lang: state.lang,
+    compName: document.getElementById('setup-comp-name').value || '',
+    createdAt: formatNow(),
+    size: size,
+    fencers: Array.from({length: size}, (_, i) => `${t.fencer} ${i+1}`),
+    results: {},
+    currentMatchIdx: 0
+  };
+  saveState();
+  loadMatchToInput(0);
+  renderAll();
+}
+
+function changeLang(lang) {
+  state.lang = lang;
+  applyLang();
+  saveState();
+  renderAll();
+}
+
+function applyLang() {
+  const t = I18N[state.lang] || I18N.ja;
+  document.getElementById('ui-title').textContent = t.title;
+  document.getElementById('ui-home-btn').textContent = t.homeBtn;
+  document.getElementById('comp-name').placeholder = t.compPlaceholder;
+  document.getElementById('ui-register-btn').textContent = t.reg;
+  document.getElementById('ui-name-hint').textContent = t.hint;
+}
+
+function getMatchKey(a, b) {
+  return a < b ? `${a}-${b}` : `${b}-${a}`;
+}
+
+function loadMatchToInput(idx) {
+  const order = BOUT_ORDERS[state.size];
+  if (!order || idx >= order.length) idx = 0;
+  state.currentMatchIdx = idx;
+  const [f1, f2] = order[idx];
+  const key = getMatchKey(f1, f2);
+  const existing = state.results[key];
+
+  if (existing) {
+    tempScoreL = (f1 < f2) ? existing.s1 : existing.s2;
+    tempScoreR = (f1 < f2) ? existing.s2 : existing.s1;
+    tempWinner = (existing.winner === f1) ? 'L' : 'R';
+  } else {
+    tempScoreL = 0;
+    tempScoreR = 0;
+    tempWinner = null;
+  }
+  updateInputUI();
+}
+
+function adjScore(side, delta) {
+  if (side === 'L') {
+    tempScoreL = Math.max(0, Math.min(5, tempScoreL + delta));
+  } else {
+    tempScoreR = Math.max(0, Math.min(5, tempScoreR + delta));
+  }
+  if (tempScoreL === 5 && tempScoreR < 5) tempWinner = 'L';
+  else if (tempScoreR === 5 && tempScoreL < 5) tempWinner = 'R';
+  else if (tempScoreL > tempScoreR) tempWinner = 'L';
+  else if (tempScoreR > tempScoreL) tempWinner = 'R';
+  else tempWinner = null;
+
+  updateInputUI();
+}
+
+function setWinner(side) {
+  tempWinner = side;
+  updateInputUI();
+}
+
+function updateInputUI() {
+  const order = BOUT_ORDERS[state.size];
+  if (!order) return;
+  const [f1, f2] = order[state.currentMatchIdx];
+  const t = I18N[state.lang] || I18N.ja;
+
+  document.getElementById('match-progress').textContent = `Match ${state.currentMatchIdx + 1} / ${order.length}`;
+  
+  let nextIdx = -1;
+  for (let i = 1; i <= order.length; i++) {
+    const checkIdx = (state.currentMatchIdx + i) % order.length;
+    const [nf1, nf2] = order[checkIdx];
+    if (!state.results[getMatchKey(nf1, nf2)]) {
+      nextIdx = checkIdx;
+      break;
+    }
+  }
+  if (nextIdx !== -1) {
+    const [nf1, nf2] = order[nextIdx];
+    document.getElementById('next-match-info').textContent = `${t.next}: ${state.fencers[nf1-1]} vs ${state.fencers[nf2-1]}`;
+  } else {
+    document.getElementById('next-match-info').textContent = `${t.next}: ${t.complete}`;
+  }
+
+  document.getElementById('left-num').textContent = `#${f1}`;
+  document.getElementById('left-name').textContent = state.fencers[f1 - 1];
+  document.getElementById('left-score').textContent = tempScoreL;
+
+  document.getElementById('right-num').textContent = `#${f2}`;
+  document.getElementById('right-name').textContent = state.fencers[f2 - 1];
+  document.getElementById('right-score').textContent = tempScoreR;
+
+  document.getElementById('left-win-btn').className = 'btn-win' + (tempWinner === 'L' ? ' active' : '');
+  document.getElementById('right-win-btn').className = 'btn-win' + (tempWinner === 'R' ? ' active' : '');
+}
+
+function registerMatch() {
+  const order = BOUT_ORDERS[state.size];
+  const [f1, f2] = order[state.currentMatchIdx];
+
+  if (!tempWinner) {
+    if (tempScoreL > tempScoreR) tempWinner = 'L';
+    else if (tempScoreR > tempScoreL) tempWinner = 'R';
+    else {
+      alert("勝者（WIN）を選択してください");
+      return;
+    }
+  }
+
+  const key = getMatchKey(f1, f2);
+  const winnerNum = (tempWinner === 'L') ? f1 : f2;
+  state.results[key] = {
+    s1: (f1 < f2) ? tempScoreL : tempScoreR,
+    s2: (f1 < f2) ? tempScoreR : tempScoreL,
+    winner: winnerNum
+  };
+
+  let nextIdx = (state.currentMatchIdx + 1) % order.length;
+  for (let i = 1; i <= order.length; i++) {
+    const checkIdx = (state.currentMatchIdx + i) % order.length;
+    const [nf1, nf2] = order[checkIdx];
+    if (!state.results[getMatchKey(nf1, nf2)]) {
+      nextIdx = checkIdx;
+      break;
+    }
+  }
+
+  saveState();
+  loadMatchToInput(nextIdx);
+  renderAll();
+}
+
+function selectMatchByFencers(r, c) {
+  if (r === c) return;
+  const order = BOUT_ORDERS[state.size];
+  const idx = order.findIndex(([a, b]) => (a === r && b === c) || (a === c && b === r));
+  if (idx !== -1) {
+    loadMatchToInput(idx);
+    renderAll();
+  }
+}
+
+function editFencerName(idx) {
+  const current = state.fencers[idx];
+  const newName = prompt(`#${idx+1} 選手名を入力:`, current);
+  if (newName !== null && newName.trim() !== "") {
+    state.fencers[idx] = newName.trim();
+    saveState();
+    renderAll();
+  }
+}
+
+function renderAll() {
+  document.getElementById('start-time-display').textContent = `Start: ${state.createdAt}`;
+  updateInputUI();
+  renderTable();
+  renderBoutOrderList();
+}
+
+function renderTable() {
+  const table = document.getElementById('poule-table');
+  const n = state.size;
+  const order = BOUT_ORDERS[n];
+  if (!order) return;
+  const [curF1, curF2] = order[state.currentMatchIdx];
+
+  let stats = Array.from({length: n}, (_, i) => ({ id: i+1, v: 0, m: 0, ts: 0, tr: 0 }));
+  for (let r = 1; r <= n; r++) {
+    for (let c = 1; c <= n; c++) {
+      if (r === c) continue;
+      const res = state.results[getMatchKey(r, c)];
+      if (res) {
+        stats[r-1].m++;
+        const myScore = (r < c) ? res.s1 : res.s2;
+        const oppScore = (r < c) ? res.s2 : res.s1;
+        stats[r-1].ts += myScore;
+        stats[r-1].tr += oppScore;
+        if (res.winner === r) stats[r-1].v++;
+      }
+    }
+  }
+
+  let ranked = [...stats].map(st => ({
+    ...st,
+    vm: st.m > 0 ? st.v / st.m : 0,
+    ind: st.ts - st.tr
+  })).sort((a, b) => {
+    if (b.vm !== a.vm) return b.vm - a.vm;
+    if (b.ind !== a.ind) return b.ind - a.ind;
+    return b.ts - a.ts;
+  });
+
+  let ranks = {};
+  ranked.forEach((item, index) => {
+    ranks[item.id] = index + 1;
+  });
+
+  let html = `<thead><tr><th>Pl</th><th>Name</th><th>#</th>`;
+  for (let i = 1; i <= n; i++) html += `<th>${i}</th>`;
+  html += `<th>V</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th></tr></thead><tbody>`;
+
+  for (let r = 1; r <= n; r++) {
+    const st = stats[r-1];
+    const vm = st.m > 0 ? (st.v / st.m).toFixed(2) : '.00';
+    const ind = st.ts - st.tr;
+    const pl = ranks[r];
+
+    html += `<tr>`;
+    html += `<td style="font-weight:bold; background:#edf2f7;">${pl}</td>`;
+    html += `<td class="name-cell" onclick="editFencerName(${r-1})">${state.fencers[r-1]}</td>`;
+    html += `<th>${r}</th>`;
+
+    for (let c = 1; c <= n; c++) {
+      if (r === c) {
+        html += `<td class="diag"></td>`;
+      } else {
+        const isCurrent = (r === curF1 && c === curF2) || (r === curF2 && c === curF1);
+        const res = state.results[getMatchKey(r, c)];
+        let cellContent = '';
+        if (res) {
+          const myScore = (r < c) ? res.s1 : res.s2;
+          if (res.winner === r) {
+            cellContent = `<span class="res-v">V${myScore}</span>`;
+          } else {
+            cellContent = `<span class="res-d">${myScore}</span>`;
+          }
+        }
+        html += `<td class="clickable ${isCurrent ? 'current-cell' : ''}" onclick="selectMatchByFencers(${r},${c})">${cellContent}</td>`;
+      }
+    }
+
+    html += `<td class="stat-cell">${st.v}</td>`;
+    html += `<td class="stat-cell">${vm}</td>`;
+    html += `<td class="stat-cell">${st.ts}</td>`;
+    html += `<td class="stat-cell">${st.tr}</td>`;
+    html += `<td class="stat-cell">${ind > 0 ? '+'+ind : ind}</td>`;
+    html += `</tr>`;
+  }
+  html += `</tbody>`;
+  table.innerHTML = html;
+}
+
+function renderBoutOrderList() {
+  const container = document.getElementById('bout-order-container');
+  const order = BOUT_ORDERS[state.size];
+  if (!order) return;
+
+  let html = '';
+  order.forEach(([f1, f2], idx) => {
+    const key = getMatchKey(f1, f2);
+    const res = state.results[key];
+    const isCurrent = (idx === state.currentMatchIdx);
+    
+    let statusText = '<span style="color:#718096;">未</span>';
+    if (res) {
+      const s1 = (f1 < f2) ? res.s1 : res.s2;
+      const s2 = (f1 < f2) ? res.s2 : res.s1;
+      statusText = `<span style="font-weight:bold; color:var(--win-color);">${s1} - ${s2}</span>`;
+    }
+
+    let itemClass = 'bout-item';
+    if (isCurrent) itemClass += ' current';
+    else if (res) itemClass += ' done';
+
+    html += `
+      <div class="${itemClass}" onclick="loadMatchToInput(${idx}); window.scrollTo({top: 0, behavior: 'smooth'});">
+        <span style="font-weight:600; min-width:65px;">Match ${idx+1}</span>
+        <span style="flex:1; text-align:left; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          #${f1} ${state.fencers[f1-1]} vs #${f2} ${state.fencers[f2-1]}
+        </span>
+        <span>${statusText}</span>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function saveState() {
+  localStorage.setItem('fp_current_state', JSON.stringify(state));
+  let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  const idx = history.findIndex(item => item.id === state.id);
+  if (idx !== -1) history[idx] = state;
+  else history.unshift(state);
+  localStorage.setItem('fp_history', JSON.stringify(history));
+}
+</script>
+</body>
+</html>

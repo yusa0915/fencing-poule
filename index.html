@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Fencing Poule Memo</title>
 <style>
@@ -19,8 +20,17 @@
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   body { margin: 0; padding: 10px; background: var(--bg-color); color: #2d3748; font-size: 14px; }
   
+  /* Passcode Lock Screen */
+  #lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a365d; z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px; }
+  .lock-card { background: white; padding: 28px 24px; border-radius: 12px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .lock-card h2 { margin-top: 0; color: var(--primary); font-size: 18px; margin-bottom: 8px; }
+  .lock-card p { font-size: 13px; color: #718096; margin-bottom: 16px; }
+  .lock-card input { width: 100%; padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 12px; text-align: center; }
+  .lock-card button { width: 100%; padding: 12px; font-size: 16px; background: var(--primary); color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; }
+  #lock-error { color: var(--lose-color); font-size: 12px; margin-top: 8px; display: none; font-weight: bold; }
+
   /* Setup / Home Screen */
-  #setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 54, 93, 0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+  #setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 54, 93, 0.95); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px; }
   .setup-card { background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
   .setup-card h2 { margin-top: 0; color: var(--primary); font-size: 20px; margin-bottom: 16px; }
   .setup-card .form-group { margin-bottom: 15px; text-align: left; }
@@ -74,11 +84,21 @@
   .bout-item.current { background: var(--current-match); border-color: var(--current-border); font-weight: bold; }
   .bout-item.done { opacity: 0.7; background: #fff; }
 
-  /* Modal / History list */
   .history-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
 </style>
 </head>
 <body>
+
+<!-- Passcode Lock Screen -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <h2>🔒 アクセス制限</h2>
+    <p>合言葉（パスコード）を入力してください</p>
+    <input type="password" id="passcode-input" placeholder="合言葉を入力">
+    <button type="button" onclick="checkPasscode()">ロック解除</button>
+    <div id="lock-error">合言葉が違います</div>
+  </div>
+</div>
 
 <!-- Setup / Home Screen -->
 <div id="setup-screen">
@@ -98,7 +118,7 @@
         <option value="7">7人プール</option>
       </select>
     </div>
-    <button onclick="startNewPouleFromSetup()">新しいプールを開始する</button>
+    <button type="button" onclick="startNewPouleFromSetup()">新しいプールを開始する</button>
     
     <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
     
@@ -118,11 +138,10 @@
       <option value="zh">中文</option>
       <option value="ko">한국어</option>
     </select>
-    <button class="secondary" onclick="showSetupScreen()" id="ui-home-btn">ホームに戻る</button>
+    <button type="button" class="secondary" id="ui-home-btn" onclick="showSetupScreen()">ホームに戻る</button>
   </div>
 </div>
 
-<!-- Setup Card (Inside App) -->
 <div class="card">
   <div class="row">
     <input type="text" id="comp-name" placeholder="大会名（空欄時は日時）" oninput="updateCompName(this.value)">
@@ -130,7 +149,6 @@
   </div>
 </div>
 
-<!-- Active Match Input Card -->
 <div class="card match-box" id="match-input-card">
   <div class="match-header">
     <span id="match-progress">Match 1 / 15</span>
@@ -141,42 +159,52 @@
       <div class="fencer-num" id="left-num">#1</div>
       <div class="fencer-name" id="left-name">選手 1</div>
       <div class="score-controls">
-        <button class="btn-score" onclick="adjScore('L', -1)">-</button>
+        <button type="button" class="btn-score" onclick="adjScore('L', -1)">-</button>
         <div class="score-val" id="left-score">0</div>
-        <button class="btn-score" onclick="adjScore('L', 1)">+</button>
+        <button type="button" class="btn-score" onclick="adjScore('L', 1)">+</button>
       </div>
-      <button class="btn-win" id="left-win-btn" onclick="setWinner('L')">WIN (V)</button>
+      <button type="button" class="btn-win" id="left-win-btn" onclick="setWinner('L')">WIN (V)</button>
     </div>
     <div style="font-weight:bold; color:#a0aec0;">VS</div>
     <div class="fencer-panel">
       <div class="fencer-num" id="right-num">#2</div>
       <div class="fencer-name" id="right-name">選手 2</div>
       <div class="score-controls">
-        <button class="btn-score" onclick="adjScore('R', -1)">-</button>
+        <button type="button" class="btn-score" onclick="adjScore('R', -1)">-</button>
         <div class="score-val" id="right-score">0</div>
-        <button class="btn-score" onclick="adjScore('R', 1)">+</button>
+        <button type="button" class="btn-score" onclick="adjScore('R', 1)">+</button>
       </div>
-      <button class="btn-win" id="right-win-btn" onclick="setWinner('R')">WIN (V)</button>
+      <button type="button" class="btn-win" id="right-win-btn" onclick="setWinner('R')">WIN (V)</button>
     </div>
   </div>
-  <button class="register-btn" onclick="registerMatch()" id="ui-register-btn">登録して次の試合へ</button>
+  <button type="button" class="register-btn" id="ui-register-btn" onclick="registerMatch()">登録して次の試合へ</button>
 </div>
 
-<!-- Fencing Time Style Poule Sheet -->
 <div class="card table-wrap">
   <table class="ft-table" id="poule-table"></table>
   <div style="margin-top:8px; font-size:11px; color:#718096;" id="ui-name-hint">※選手名欄をタップで名前変更 / マスをタップで試合選択</div>
 </div>
 
-<!-- Bout Order List Card -->
 <div class="card">
   <h3 style="font-size:14px; margin-bottom:8px; color:var(--primary);">試合オーダー一覧 (Bout Order)</h3>
-  <div class="bout-order-list" id="bout-order-container">
-    <!-- 動的にリストが生成されます -->
-  </div>
+  <div class="bout-order-list" id="bout-order-container"></div>
 </div>
 
 <script>
+// ★ここをお好きな合言葉に変更できます
+const PASSCODE = "sabre2026";
+
+function checkPasscode() {
+  const input = document.getElementById('passcode-input').value;
+  if (input === PASSCODE) {
+    try { localStorage.setItem('fp_unlocked', 'true'); } catch(e) {}
+    document.getElementById('lock-screen').style.display = 'none';
+    initApp();
+  } else {
+    document.getElementById('lock-error').style.display = 'block';
+  }
+}
+
 const BOUT_ORDERS = {
   3: [[2,3],[1,2],[3,1]],
   4: [[1,4],[2,3],[1,3],[2,4],[3,4],[1,2]],
@@ -187,11 +215,7 @@ const BOUT_ORDERS = {
 
 const I18N = {
   ja: { title: "フェンシング予選スコア", homeBtn: "ホームに戻る", compPlaceholder: "大会名（空欄時は日時）", next: "次の試合", reg: "登録して次の試合へ", hint: "※選手名欄をタップで名前変更 / マスをタップで試合選択", fencer: "選手", load: "開く", del: "削除", complete: "全試合終了" },
-  en: { title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Tournament Name", next: "Next", reg: "Save & Next Bout", hint: "*Tap name to edit / Tap cell to select bout", fencer: "Fencer", load: "Load", del: "Del", complete: "All Bouts Done" },
-  fr: { title: "Feuille de Poule", homeBtn: "Accueil", compPlaceholder: "Nom du tournoi", next: "Suivant", reg: "Enregistrer & Suivant", hint: "*Touchez le nom pour modifier", fencer: "Tireur", load: "Ouvrir", del: "Suppr", complete: "Poule terminée" },
-  it: { title: "Foglio Girone", homeBtn: "Home", compPlaceholder: "Nome Torneo", next: "Prossimo", reg: "Salva e Prossimo", hint: "*Tocca il nome per modificare", fencer: "Atleta", load: "Apri", del: "Elim", complete: "Girone completato" },
-  zh: { title: "击剑小组赛记录", homeBtn: "主页", compPlaceholder: "比赛名称", next: "下一场", reg: "保存并进入下一场", hint: "※点击选手姓名可编辑", fencer: "选手", load: "打开", del: "删除", complete: "全部比赛结束" },
-  ko: { title: "펜싱 뿔 스코어", homeBtn: "홈으로", compPlaceholder: "대회명", next: "다음 경기", reg: "등록 및 다음 경기", hint: "※선수 이름 탭하여 수정", fencer: "선수", load: "열기", del: "삭제", complete: "모든 경기 종료" }
+  en: { title: "Fencing Poule Memo", homeBtn: "Home", compPlaceholder: "Tournament Name", next: "Next", reg: "Save & Next Bout", hint: "*Tap name to edit / Tap cell to select bout", fencer: "Fencer", load: "Load", del: "Del", complete: "All Bouts Done" }
 };
 
 let state = {
@@ -209,24 +233,41 @@ let tempScoreL = 0;
 let tempScoreR = 0;
 let tempWinner = null;
 
-window.onload = () => {
-  const savedCurrent = localStorage.getItem('fp_current_state');
-  if (savedCurrent) {
-    state = JSON.parse(savedCurrent);
-    document.getElementById('lang-select').value = state.lang || 'ja';
-    document.getElementById('comp-name').value = state.compName;
+window.onload = function() {
+  let isUnlocked = false;
+  try {
+    isUnlocked = (localStorage.getItem('fp_unlocked') === 'true');
+  } catch(e) {}
+
+  if (isUnlocked) {
+    document.getElementById('lock-screen').style.display = 'none';
+    initApp();
   }
+};
+
+function initApp() {
+  try {
+    const savedCurrent = localStorage.getItem('fp_current_state');
+    if (savedCurrent) {
+      state = JSON.parse(savedCurrent);
+      if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang || 'ja';
+      if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
+    }
+  } catch(e) {}
   showSetupScreen();
   applyLang();
   loadMatchToInput(state.currentMatchIdx);
   renderAll();
-};
+}
 
 function showSetupScreen() {
-  document.getElementById('setup-comp-name').value = state.compName || '';
-  document.getElementById('setup-poule-size').value = state.size || 6;
+  const nameEl = document.getElementById('setup-comp-name');
+  const sizeEl = document.getElementById('setup-poule-size');
+  if(nameEl) nameEl.value = state.compName || '';
+  if(sizeEl) sizeEl.value = state.size || 6;
   renderSetupHistory();
-  document.getElementById('setup-screen').style.display = 'flex';
+  const screen = document.getElementById('setup-screen');
+  if(screen) screen.style.display = 'flex';
 }
 
 function startNewPouleFromSetup() {
@@ -235,16 +276,23 @@ function startNewPouleFromSetup() {
   
   initNewPoule(sizeInput);
   state.compName = nameInput;
-  document.getElementById('comp-name').value = nameInput;
+  const compNameEl = document.getElementById('comp-name');
+  if(compNameEl) compNameEl.value = nameInput;
   saveState();
   
-  document.getElementById('setup-screen').style.display = 'none';
+  const screen = document.getElementById('setup-screen');
+  if(screen) screen.style.display = 'none';
   renderAll();
 }
 
 function renderSetupHistory() {
-  const history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
   const container = document.getElementById('setup-history-list');
+  if(!container) return;
   const t = I18N[state.lang] || I18N.ja;
   
   if (history.length === 0) {
@@ -252,44 +300,55 @@ function renderSetupHistory() {
     return;
   }
 
-  container.innerHTML = '';
+  let html = '';
   history.forEach(item => {
     const title = item.compName && item.compName.trim() !== '' ? item.compName : item.createdAt;
-    const div = document.createElement('div');
-    div.className = 'history-row';
-    div.innerHTML = `
-      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
-        <div style="font-weight:bold; font-size:13px;">${title} (${item.size}人)</div>
-        <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
-      </div>
-      <div style="display:flex; gap:4px;">
-        <button style="padding:4px 8px; font-size:12px;" onclick="loadHistoryItem('${item.id}')">${t.load}</button>
-        <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteHistoryItem('${item.id}')">${t.del}</button>
+    html += `
+      <div class="history-row">
+        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">
+          <div style="font-weight:bold; font-size:13px;">${title} (${item.size}人)</div>
+          <div style="font-size:10px; color:#718096;">${item.createdAt}</div>
+        </div>
+        <div style="display:flex; gap:4px;">
+          <button type="button" style="padding:4px 8px; font-size:12px;" onclick="loadHistoryItem('${item.id}')">${t.load}</button>
+          <button type="button" class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteHistoryItem('${item.id}')">${t.del}</button>
+        </div>
       </div>
     `;
-    container.appendChild(div);
   });
+  container.innerHTML = html;
 }
 
 function loadHistoryItem(id) {
-  const history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
   const found = history.find(item => item.id === id);
   if (found) {
     state = found;
-    document.getElementById('lang-select').value = state.lang || 'ja';
-    document.getElementById('comp-name').value = state.compName;
+    if(document.getElementById('lang-select')) document.getElementById('lang-select').value = state.lang || 'ja';
+    if(document.getElementById('comp-name')) document.getElementById('comp-name').value = state.compName || '';
     saveState();
     applyLang();
     loadMatchToInput(state.currentMatchIdx);
     renderAll();
-    document.getElementById('setup-screen').style.display = 'none';
+    const screen = document.getElementById('setup-screen');
+    if(screen) screen.style.display = 'none';
   }
 }
 
 function deleteHistoryItem(id) {
-  let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+  } catch(e) {}
+  
   history = history.filter(item => item.id !== id);
-  localStorage.setItem('fp_history', JSON.stringify(history));
+  try {
+    localStorage.setItem('fp_history', JSON.stringify(history));
+  } catch(e) {}
   renderSetupHistory();
 }
 
@@ -309,7 +368,7 @@ function initNewPoule(size) {
   state = {
     id: 'poule_' + Date.now(),
     lang: state.lang,
-    compName: document.getElementById('setup-comp-name').value || '',
+    compName: document.getElementById('setup-comp-name') ? document.getElementById('setup-comp-name').value : '',
     createdAt: formatNow(),
     size: size,
     fencers: Array.from({length: size}, (_, i) => `${t.fencer} ${i+1}`),
@@ -330,11 +389,11 @@ function changeLang(lang) {
 
 function applyLang() {
   const t = I18N[state.lang] || I18N.ja;
-  document.getElementById('ui-title').textContent = t.title;
-  document.getElementById('ui-home-btn').textContent = t.homeBtn;
-  document.getElementById('comp-name').placeholder = t.compPlaceholder;
-  document.getElementById('ui-register-btn').textContent = t.reg;
-  document.getElementById('ui-name-hint').textContent = t.hint;
+  if(document.getElementById('ui-title')) document.getElementById('ui-title').textContent = t.title;
+  if(document.getElementById('ui-home-btn')) document.getElementById('ui-home-btn').textContent = t.homeBtn;
+  if(document.getElementById('comp-name')) document.getElementById('comp-name').placeholder = t.compPlaceholder;
+  if(document.getElementById('ui-register-btn')) document.getElementById('ui-register-btn').textContent = t.reg;
+  if(document.getElementById('ui-name-hint')) document.getElementById('ui-name-hint').textContent = t.hint;
 }
 
 function getMatchKey(a, b) {
@@ -387,7 +446,7 @@ function updateInputUI() {
   const [f1, f2] = order[state.currentMatchIdx];
   const t = I18N[state.lang] || I18N.ja;
 
-  document.getElementById('match-progress').textContent = `Match ${state.currentMatchIdx + 1} / ${order.length}`;
+  if(document.getElementById('match-progress')) document.getElementById('match-progress').textContent = `Match ${state.currentMatchIdx + 1} / ${order.length}`;
   
   let nextIdx = -1;
   for (let i = 1; i <= order.length; i++) {
@@ -400,21 +459,23 @@ function updateInputUI() {
   }
   if (nextIdx !== -1) {
     const [nf1, nf2] = order[nextIdx];
-    document.getElementById('next-match-info').textContent = `${t.next}: ${state.fencers[nf1-1]} vs ${state.fencers[nf2-1]}`;
+    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${state.fencers[nf1-1]} vs ${state.fencers[nf2-1]}`;
   } else {
-    document.getElementById('next-match-info').textContent = `${t.next}: ${t.complete}`;
+    if(document.getElementById('next-match-info')) document.getElementById('next-match-info').textContent = `${t.next}: ${t.complete}`;
   }
 
-  document.getElementById('left-num').textContent = `#${f1}`;
-  document.getElementById('left-name').textContent = state.fencers[f1 - 1];
-  document.getElementById('left-score').textContent = tempScoreL;
+  if(document.getElementById('left-num')) document.getElementById('left-num').textContent = `#${f1}`;
+  if(document.getElementById('left-name')) document.getElementById('left-name').textContent = state.fencers[f1 - 1];
+  if(document.getElementById('left-score')) document.getElementById('left-score').textContent = tempScoreL;
 
-  document.getElementById('right-num').textContent = `#${f2}`;
-  document.getElementById('right-name').textContent = state.fencers[f2 - 1];
-  document.getElementById('right-score').textContent = tempScoreR;
+  if(document.getElementById('right-num')) document.getElementById('right-num').textContent = `#${f2}`;
+  if(document.getElementById('right-name')) document.getElementById('right-name').textContent = state.fencers[f2 - 1];
+  if(document.getElementById('right-score')) document.getElementById('right-score').textContent = tempScoreR;
 
-  document.getElementById('left-win-btn').className = 'btn-win' + (tempWinner === 'L' ? ' active' : '');
-  document.getElementById('right-win-btn').className = 'btn-win' + (tempWinner === 'R' ? ' active' : '');
+  const lBtn = document.getElementById('left-win-btn');
+  const rBtn = document.getElementById('right-win-btn');
+  if(lBtn) lBtn.className = 'btn-win' + (tempWinner === 'L' ? ' active' : '');
+  if(rBtn) rBtn.className = 'btn-win' + (tempWinner === 'R' ? ' active' : '');
 }
 
 function registerMatch() {
@@ -474,7 +535,8 @@ function editFencerName(idx) {
 }
 
 function renderAll() {
-  document.getElementById('start-time-display').textContent = `Start: ${state.createdAt}`;
+  const timeDisplay = document.getElementById('start-time-display');
+  if(timeDisplay) timeDisplay.textContent = `Start: ${state.createdAt}`;
   updateInputUI();
   renderTable();
   renderBoutOrderList();
@@ -482,6 +544,7 @@ function renderAll() {
 
 function renderTable() {
   const table = document.getElementById('poule-table');
+  if(!table) return;
   const n = state.size;
   const order = BOUT_ORDERS[n];
   if (!order) return;
@@ -565,6 +628,7 @@ function renderTable() {
 
 function renderBoutOrderList() {
   const container = document.getElementById('bout-order-container');
+  if(!container) return;
   const order = BOUT_ORDERS[state.size];
   if (!order) return;
 
@@ -599,12 +663,14 @@ function renderBoutOrderList() {
 }
 
 function saveState() {
-  localStorage.setItem('fp_current_state', JSON.stringify(state));
-  let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
-  const idx = history.findIndex(item => item.id === state.id);
-  if (idx !== -1) history[idx] = state;
-  else history.unshift(state);
-  localStorage.setItem('fp_history', JSON.stringify(history));
+  try {
+    localStorage.setItem('fp_current_state', JSON.stringify(state));
+    let history = JSON.parse(localStorage.getItem('fp_history') || '[]');
+    const idx = history.findIndex(item => item.id === state.id);
+    if (idx !== -1) history[idx] = state;
+    else history.unshift(state);
+    localStorage.setItem('fp_history', JSON.stringify(history));
+  } catch(e) {}
 }
 </script>
 </body>
